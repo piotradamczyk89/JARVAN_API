@@ -9,32 +9,12 @@ resource "aws_api_gateway_resource" "resource" {
   rest_api_id = aws_api_gateway_rest_api.own_api.id
 }
 
-resource "aws_api_gateway_model" "ai_question" {
-  rest_api_id  = aws_api_gateway_rest_api.own_api.id
-  name         = "aiDevs"
-  description  = "a JSON schema"
-  content_type = "application/json"
-
-  schema = jsonencode({
-    "type" : "object",
-    "properties" : {
-      "question" : {
-        "type" : "string"
-      }
-    },
-    "required" : ["question"]
-  })
-}
-
 resource "aws_api_gateway_method" "methods" {
   for_each       = var.lambda_functions
   authorization  = "NONE"
   http_method    = each.value.http_method
   resource_id    = aws_api_gateway_resource.resource[each.key].id
   rest_api_id    = aws_api_gateway_rest_api.own_api.id
-  request_models = {
-    "application/json" = aws_api_gateway_model.ai_question.name
-  }
 }
 
 resource "aws_api_gateway_integration" "integration" {

@@ -63,4 +63,17 @@ resource "aws_lambda_layer_version" "lambda_layer" {
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }
 
+// secret manager
+
+resource "aws_secretsmanager_secret" "openAIKey" {
+  name        = "openAIKey"
+  description = "Open AI key"
+}
+
+resource "aws_secretsmanager_secret_version" "example" {
+  secret_id     = aws_secretsmanager_secret.openAIKey.id
+  secret_string = jsonencode({key = var.openAIKey})
+}
+
+
 
