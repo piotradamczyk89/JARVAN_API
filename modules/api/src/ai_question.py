@@ -7,22 +7,23 @@ from langchain_openai import ChatOpenAI
 
 
 def handler(event, context):
-    question = event.get['question']
+    event = json.loads(event["body"])
+    question = event['question']
     system_message = SystemMessage("answer user question as short as possible")
     human_message = HumanMessage(question)
     chat = ChatOpenAI(openai_api_key=get_secret())
     answer = chat.invoke(
         ChatPromptTemplate.from_messages([system_message, human_message]).format_prompt())
-    print(answer)
 
     return {
         "statusCode": 200,
-        "body": "sema"
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({"reply": answer.content})
     }
 
 
 def get_secret():
-    secret_name = "openAI_key"
+    secret_name = "openAIKey"
     region_name = "eu-central-1"
 
     session = boto3.session.Session()
