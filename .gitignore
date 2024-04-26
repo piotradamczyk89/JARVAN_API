@@ -1,4 +1,4 @@
-/modules/api/src/lambda_reference/python/
+/modules/api/src/lambda_layer_dependencies/python/
 /.idea/
 /jarvan/
 /.terraform/

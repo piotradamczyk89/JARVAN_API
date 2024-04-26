@@ -47,12 +47,6 @@ resource "aws_lambda_function" "lambda" {
   runtime          = each.value.runtime
   timeout          = 60
 
-  #  dynamic "layer" {
-  #    for_each = contains(["python3.10","python3.8", "python3.9"], each.value.runtime) ? [1] : []
-  #    content {
-  #      value = aws_lambda_layer_version.lambda_layer.arn
-  #    }
-  #  }
   layers = contains(["python3.12", "python3.11", "python3.10", "python3.8", "python3.9"], each.value.runtime) ? [
     aws_lambda_layer_version.lambda_layer.arn
   ] : []
@@ -61,10 +55,10 @@ resource "aws_lambda_function" "lambda" {
 // lambda layer
 
 resource "aws_lambda_layer_version" "lambda_layer" {
-  filename                 = "${path.module}/src/lambda_reference/python.zip"
-  source_code_hash         = filebase64sha256("${path.module}/src/lambda_reference/python.zip")
+  filename                 = "${path.module}/src/lambda_layer_dependencies/python.zip"
+  source_code_hash         = filebase64sha256("${path.module}/src/lambda_layer_dependencies/python.zip")
   layer_name               = "langchain_openai_AND_langchain_core"
-  compatible_architectures = ["arm64"]
+  compatible_architectures = ["x86_64"]
 
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }

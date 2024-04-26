@@ -9,12 +9,32 @@ resource "aws_api_gateway_resource" "resource" {
   rest_api_id = aws_api_gateway_rest_api.own_api.id
 }
 
+resource "aws_api_gateway_model" "ai_question" {
+  rest_api_id  = aws_api_gateway_rest_api.own_api.id
+  name         = "aiDevs"
+  description  = "a JSON schema"
+  content_type = "application/json"
+
+  schema = jsonencode({
+    "type" : "object",
+    "properties" : {
+      "question" : {
+        "type" : "string"
+      }
+    },
+    "required" : ["question"]
+  })
+}
+
 resource "aws_api_gateway_method" "methods" {
-  for_each      = var.lambda_functions
-  authorization = "NONE"
-  http_method   = each.value.http_method
-  resource_id   = aws_api_gateway_resource.resource[each.key].id
-  rest_api_id   = aws_api_gateway_rest_api.own_api.id
+  for_each       = var.lambda_functions
+  authorization  = "NONE"
+  http_method    = each.value.http_method
+  resource_id    = aws_api_gateway_resource.resource[each.key].id
+  rest_api_id    = aws_api_gateway_rest_api.own_api.id
+  request_models = {
+    "application/json" = aws_api_gateway_model.ai_question.name
+  }
 }
 
 resource "aws_api_gateway_integration" "integration" {
@@ -48,11 +68,74 @@ resource "aws_api_gateway_deployment" "deployment" {
   lifecycle {
     create_before_destroy = true
   }
-  depends_on = [aws_api_gateway_method.methods,aws_api_gateway_integration.integration]
+  depends_on = [aws_api_gateway_method.methods, aws_api_gateway_integration.integration]
 }
 
 resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
   rest_api_id   = aws_api_gateway_rest_api.own_api.id
   stage_name    = "dev"
+  depends_on = [aws_cloudwatch_log_group.api_gw_logs]
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
+    format          = "{'requestId':'$context.requestId', 'ip': '$context.identity.sourceIp', 'caller':'$context.identity.caller', 'user':'$context.identity.user', 'requestTime':'$context.requestTime', 'httpMethod':'$context.httpMethod', 'resourcePath':'$context.resourcePath', 'status':'$context.status', 'protocol':'$context.protocol', 'responseLength':'$context.responseLength'}"
+  }
+
+  xray_tracing_enabled = true
 }
+
+#log
+
+resource "aws_api_gateway_account" "api_account" {
+  cloudwatch_role_arn = aws_iam_role.api_gw_logging_role.arn
+
+  depends_on = [
+    aws_iam_role_policy.api_gw_logging_policy
+  ]
+}
+resource "aws_cloudwatch_log_group" "api_gw_logs" {
+  name = "/aws/api-gateway/my-api-logs"
+  retention_in_days = 7
+}
+
+resource "aws_iam_role" "api_gw_logging_role" {
+  name = "api_gateway_cloudwatch_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_gw_logging_policy" {
+  name = "api_gw_logging_policy"
+  role = aws_iam_role.api_gw_logging_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
+        ]
+        Resource = ["*"]
+      }
+    ]
+  })
+}
+

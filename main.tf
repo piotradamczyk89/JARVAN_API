@@ -19,7 +19,7 @@ module "api" {
       runtime ="python3.12"
       extension = "py"
       endpoint_path = "question"
-      http_method = "GET"
+      http_method = "POST"
     }
   }
   accountID = var.accountID
