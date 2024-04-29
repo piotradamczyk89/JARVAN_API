@@ -13,7 +13,12 @@ data "aws_iam_policy_document" "assume_role" {
 
 data "aws_iam_policy_document" "get_secret_policy" {
   statement {
-    actions   = ["secretsmanager:GetSecretValue"]
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
     resources = ["*"]
   }
 }
@@ -72,7 +77,15 @@ resource "aws_secretsmanager_secret" "openAIKey" {
 
 resource "aws_secretsmanager_secret_version" "example" {
   secret_id     = aws_secretsmanager_secret.openAIKey.id
-  secret_string = jsonencode({key = var.openAIKey})
+  secret_string = jsonencode({ key = var.openAIKey })
+}
+
+// cloud watch
+
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  for_each = var.lambda_functions
+  name              = "/aws/lambda/${aws_lambda_function.lambda[each.key].function_name}"
+  retention_in_days = 14
 }
 
 
