@@ -5,3 +5,4 @@
 /terraform.tfstate
 /terraform.tfstate.backup
 /modules/api/src/ai_question.zip
+/modules/api/src/*.zip

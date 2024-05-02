@@ -3,40 +3,60 @@ resource "aws_api_gateway_rest_api" "own_api" {
 }
 
 resource "aws_api_gateway_resource" "resource" {
-  for_each    = var.lambda_functions
   parent_id   = aws_api_gateway_rest_api.own_api.root_resource_id
-  path_part   = each.value.endpoint_path
+  path_part   = "question"
   rest_api_id = aws_api_gateway_rest_api.own_api.id
 }
 
-resource "aws_api_gateway_method" "methods" {
-  for_each       = var.lambda_functions
-  authorization  = "NONE"
-  http_method    = each.value.http_method
-  resource_id    = aws_api_gateway_resource.resource[each.key].id
-  rest_api_id    = aws_api_gateway_rest_api.own_api.id
+resource "aws_api_gateway_method" "method" {
+  authorization = "NONE"
+  http_method   = "POST"
+  resource_id   = aws_api_gateway_resource.resource.id
+  rest_api_id   = aws_api_gateway_rest_api.own_api.id
+}
+
+resource "aws_api_gateway_method_response" "response_200" {
+  rest_api_id = aws_api_gateway_rest_api.MyDemoAPI.id
+  resource_id = aws_api_gateway_resource.MyDemoResource.id
+  http_method = aws_api_gateway_method.MyDemoMethod.http_method
+  status_code = "200"
 }
 
 resource "aws_api_gateway_integration" "integration" {
-  for_each                = var.lambda_functions
-  http_method             = aws_api_gateway_method.methods[each.key].http_method
-  resource_id             = aws_api_gateway_resource.resource[each.key].id
+  http_method             = aws_api_gateway_method.method.http_method
+  resource_id             = aws_api_gateway_resource.resource.id
   rest_api_id             = aws_api_gateway_rest_api.own_api.id
   integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.lambda[each.key].invoke_arn
+  type                    = "AWS"
+  uri                     = "arn:aws:apigateway:${var.myregion}:states:action/StartExecution"
+  credentials             = aws_iam_role.api_gw_role.arn
+
+  request_templates = {
+    "application/json" = jsonencode({
+      input            = "$util.escapeJavaScript($input.json('$'))",
+      stateMachineArn  = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
+    })
+  }
 }
 
-resource "aws_lambda_permission" "apigw_lambda" {
-  for_each      = var.lambda_functions
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.lambda[each.key].function_name
-  principal     = "apigateway.amazonaws.com"
+resource "aws_api_gateway_integration_response" "MyDemoIntegrationResponse" {
+  rest_api_id = aws_api_gateway_rest_api.MyDemoAPI.id
+  resource_id = aws_api_gateway_resource.MyDemoResource.id
+  http_method = aws_api_gateway_method.MyDemoMethod.http_method
+  status_code = aws_api_gateway_method_response.response_200.status_code
 
-  source_arn = "arn:aws:execute-api:${var.myregion}:${var.accountID}:${aws_api_gateway_rest_api.own_api.id}/*/${aws_api_gateway_method.methods[each.key].http_method}${aws_api_gateway_resource.resource[each.key].path}"
-
+  # Transforms the backend JSON response to XML
+  response_templates = {
+    "application/xml" = <<EOF
+#set($inputRoot = $input.path('$'))
+<?xml version="1.0" encoding="UTF-8"?>
+<message>
+    $inputRoot.body
+</message>
+EOF
+  }
 }
+
 
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.own_api.id
@@ -44,18 +64,14 @@ resource "aws_api_gateway_deployment" "deployment" {
   triggers = {
     redeployment = sha1(jsonencode(aws_api_gateway_rest_api.own_api.body))
   }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-  depends_on = [aws_api_gateway_method.methods, aws_api_gateway_integration.integration]
+  depends_on = [aws_api_gateway_method.method, aws_api_gateway_integration.integration]
 }
 
 resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
   rest_api_id   = aws_api_gateway_rest_api.own_api.id
   stage_name    = "dev"
-  depends_on = [aws_cloudwatch_log_group.api_gw_logs]
+  depends_on    = [aws_cloudwatch_log_group.api_gw_logs]
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gw_logs.arn
     format          = "{'requestId':'$context.requestId', 'ip': '$context.identity.sourceIp', 'caller':'$context.identity.caller', 'user':'$context.identity.user', 'requestTime':'$context.requestTime', 'httpMethod':'$context.httpMethod', 'resourcePath':'$context.resourcePath', 'status':'$context.status', 'protocol':'$context.protocol', 'responseLength':'$context.responseLength'}"
@@ -67,26 +83,27 @@ resource "aws_api_gateway_stage" "stage" {
 #log
 
 resource "aws_api_gateway_account" "api_account" {
-  cloudwatch_role_arn = aws_iam_role.api_gw_logging_role.arn
+  cloudwatch_role_arn = aws_iam_role.api_gw_role.arn
 
   depends_on = [
-    aws_iam_role_policy.api_gw_logging_policy
+    aws_iam_role_policy.api_gateway_policy
   ]
 }
+
 resource "aws_cloudwatch_log_group" "api_gw_logs" {
-  name = "/aws/api-gateway/my-api-logs"
+  name              = "/aws/api-gateway/my-api-logs"
   retention_in_days = 7
 }
 
-resource "aws_iam_role" "api_gw_logging_role" {
+resource "aws_iam_role" "api_gw_role" {
   name = "api_gateway_cloudwatch_role"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [
       {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
         Principal = {
           Service = "apigateway.amazonaws.com"
         }
@@ -95,12 +112,14 @@ resource "aws_iam_role" "api_gw_logging_role" {
   })
 }
 
-resource "aws_iam_role_policy" "api_gw_logging_policy" {
+
+// TODO split this api gatway policy make it two
+resource "aws_iam_role_policy" "api_gateway_policy" {
   name = "api_gw_logging_policy"
-  role = aws_iam_role.api_gw_logging_role.id
+  role = aws_iam_role.api_gw_role.id
 
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [
       {
         Effect = "Allow"
@@ -110,12 +129,136 @@ resource "aws_iam_role_policy" "api_gw_logging_policy" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
           "logs:PutLogEvents",
-          "logs:GetLogEvents",
-          "logs:FilterLogEvents",
+          "apigateway:*"
         ]
         Resource = ["*"]
+      },
+      {
+        Action   = "states:StartExecution",
+        Resource  = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
+        Effect   = "Allow"
       }
     ]
   })
 }
 
+
+//step function
+
+resource "aws_iam_role" "stepFunctionRole" {
+  name = "example-sfn-role"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "states.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_invoke_policy" {
+  name = "LambdaInvokePolicy"
+  role = aws_iam_role.stepFunctionRole.id
+
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "lambda:InvokeFunction"
+        Resource = ["*"]
+      },
+    ]
+  })
+}
+
+resource "aws_sfn_state_machine" "stepFunction" {
+  name     = "stepFunction"
+  role_arn = aws_iam_role.stepFunctionRole.arn
+#  depends_on = [var.lambda_function_arns]
+
+  definition = <<EOF
+{
+"Comment": "A description of my state machine",
+  "StartAt": "Intention",
+  "States": {
+    "Intention": {
+      "Type": "Task",
+      "Resource": "${aws_lambda_function.lambda["intention"].arn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Choice"
+    },
+    "Choice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.name",
+          "StringEquals": "saveMemory",
+          "Next": "memory"
+        },
+        {
+          "Variable": "$.name",
+          "StringEquals": "answerQuestion",
+          "Next": "answer"
+        }
+      ],
+      "Default": "answer"
+    },
+    "memory": {
+      "Type": "Task",
+      "Resource": "${aws_lambda_function.lambda["memory"].arn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    },
+    "answer": {
+      "Type": "Task",
+      "Resource": "${aws_lambda_function.lambda["answer"].arn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    }
+  }
+}
+EOF
+}

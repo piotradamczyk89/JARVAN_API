@@ -11,19 +11,31 @@ provider "aws" {
   region = var.myregion
 }
 
+module "table" {
+  source = "./modules/table"
+}
+
 module "api" {
   source = "./modules/api"
 
   lambda_functions = {
-    ai_question = {
+    intention = {
       runtime ="python3.12"
       extension = "py"
-      endpoint_path = "question"
-      http_method = "POST"
-    }
+    },
+    memory = {
+      runtime ="python3.12"
+      extension = "py"
+    },
+    answer = {
+      runtime ="python3.12"
+      extension = "py"
+    },
   }
   accountID = var.accountID
   myregion = var.myregion
   openAIKey = var.openAIKey
+  dynamodb_access_policy_arn = module.table.policy_arn
+
 }
 
