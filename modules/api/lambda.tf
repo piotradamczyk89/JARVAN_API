@@ -26,6 +26,7 @@ data "aws_iam_policy_document" "get_secret_policy" {
 resource "aws_iam_role" "lambda_role" {
   name               = "lambda_role"
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
+  managed_policy_arns = [var.dynamodb_access_policy_arn]
 
   inline_policy {
     name   = "GetSecretPolicy"
@@ -68,15 +69,20 @@ resource "aws_lambda_layer_version" "lambda_layer" {
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }
 
+output "lambda_function_arns" {
+  value = { for lambda in aws_lambda_function.lambda : lambda.function_name => lambda.arn }
+  description = "Map of Lambda function names to their ARNs"
+}
+
 // secret manager
 
-resource "aws_secretsmanager_secret" "openAIKey" {
-  name        = "openAIKey"
+resource "aws_secretsmanager_secret" "AIKey" {
+  name        = "AIKey"
   description = "Open AI key"
 }
 
 resource "aws_secretsmanager_secret_version" "example" {
-  secret_id     = aws_secretsmanager_secret.openAIKey.id
+  secret_id     = aws_secretsmanager_secret.AIKey.id
   secret_string = jsonencode({ key = var.openAIKey })
 }
 
@@ -87,6 +93,8 @@ resource "aws_cloudwatch_log_group" "lambda_log_group" {
   name              = "/aws/lambda/${aws_lambda_function.lambda[each.key].function_name}"
   retention_in_days = 14
 }
+
+
 
 
 

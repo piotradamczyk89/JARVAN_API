@@ -1,5 +1,9 @@
 variable "lambda_functions" {
-  type = map(object({ extension = string, runtime = string, endpoint_path = string, http_method = string }))
+  type = map(object({ extension = string, runtime = string}))
+}
+
+variable "dynamodb_access_policy_arn" {
+  type = string
 }
 
 variable "accountID" {
