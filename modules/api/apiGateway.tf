@@ -1,75 +1,100 @@
-resource "aws_api_gateway_rest_api" "own_api" {
-  name = "own_api"
+resource "aws_api_gateway_rest_api" "jarvan" {
+  name = "jarvan"
 }
 
-resource "aws_api_gateway_resource" "resource" {
-  parent_id   = aws_api_gateway_rest_api.own_api.root_resource_id
-  path_part   = "question"
-  rest_api_id = aws_api_gateway_rest_api.own_api.id
+resource "aws_api_gateway_resource" "interaction" {
+  parent_id   = aws_api_gateway_rest_api.jarvan.root_resource_id
+  path_part   = "interaction"
+  rest_api_id = aws_api_gateway_rest_api.jarvan.id
 }
 
-resource "aws_api_gateway_method" "method" {
+resource "aws_api_gateway_method" "jarvan_interaction" {
   authorization = "NONE"
   http_method   = "POST"
-  resource_id   = aws_api_gateway_resource.resource.id
-  rest_api_id   = aws_api_gateway_rest_api.own_api.id
+  resource_id   = aws_api_gateway_resource.interaction.id
+  rest_api_id   = aws_api_gateway_rest_api.jarvan.id
+}
+
+resource "aws_api_gateway_model" "responseModel" {
+  rest_api_id  = aws_api_gateway_rest_api.jarvan.id
+  name         = "responseModel"
+  description  = "API response for JARVAN interaction"
+  content_type = "application/json"
+  schema       = jsonencode({
+    "$schema"  = "https://json-schema.org/draft/2020-12/schema"
+    title      = "api gateway response model"
+    type       = "object"
+    required   = ["answer"]
+    properties = {
+      answer = {
+        type = "string"
+      }
+    }
+  })
 }
 
 resource "aws_api_gateway_method_response" "response_200" {
-  rest_api_id = aws_api_gateway_rest_api.MyDemoAPI.id
-  resource_id = aws_api_gateway_resource.MyDemoResource.id
-  http_method = aws_api_gateway_method.MyDemoMethod.http_method
-  status_code = "200"
+  rest_api_id     = aws_api_gateway_rest_api.jarvan.id
+  resource_id     = aws_api_gateway_resource.interaction.id
+  http_method     = aws_api_gateway_method.jarvan_interaction.http_method
+  status_code     = "200"
+  response_models = {
+    "application/json" = aws_api_gateway_model.responseModel.name
+  }
+  response_parameters = {
+    "method.response.header.Content-Type" = true
+  }
 }
 
 resource "aws_api_gateway_integration" "integration" {
-  http_method             = aws_api_gateway_method.method.http_method
-  resource_id             = aws_api_gateway_resource.resource.id
-  rest_api_id             = aws_api_gateway_rest_api.own_api.id
+  http_method             = aws_api_gateway_method.jarvan_interaction.http_method
+  resource_id             = aws_api_gateway_resource.interaction.id
+  rest_api_id             = aws_api_gateway_rest_api.jarvan.id
   integration_http_method = "POST"
   type                    = "AWS"
-  uri                     = "arn:aws:apigateway:${var.myregion}:states:action/StartExecution"
+  uri                     = "arn:aws:apigateway:${var.myregion}:states:action/StartSyncExecution"
   credentials             = aws_iam_role.api_gw_role.arn
 
   request_templates = {
     "application/json" = jsonencode({
-      input            = "$util.escapeJavaScript($input.json('$'))",
-      stateMachineArn  = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
+      input           = "$util.escapeJavaScript($input.json('$'))",
+      stateMachineArn = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
     })
   }
 }
 
 resource "aws_api_gateway_integration_response" "MyDemoIntegrationResponse" {
-  rest_api_id = aws_api_gateway_rest_api.MyDemoAPI.id
-  resource_id = aws_api_gateway_resource.MyDemoResource.id
-  http_method = aws_api_gateway_method.MyDemoMethod.http_method
+  rest_api_id = aws_api_gateway_rest_api.jarvan.id
+  resource_id = aws_api_gateway_resource.interaction.id
+  http_method = aws_api_gateway_method.jarvan_interaction.http_method
   status_code = aws_api_gateway_method_response.response_200.status_code
+  depends_on  = [aws_api_gateway_integration.integration]
 
-  # Transforms the backend JSON response to XML
   response_templates = {
-    "application/xml" = <<EOF
-#set($inputRoot = $input.path('$'))
-<?xml version="1.0" encoding="UTF-8"?>
-<message>
-    $inputRoot.body
-</message>
-EOF
+    "application/json" = "$util.parseJson($input.json('$.output'))"
   }
 }
 
-
 resource "aws_api_gateway_deployment" "deployment" {
-  rest_api_id = aws_api_gateway_rest_api.own_api.id
-
-  triggers = {
-    redeployment = sha1(jsonencode(aws_api_gateway_rest_api.own_api.body))
+  rest_api_id = aws_api_gateway_rest_api.jarvan.id
+  lifecycle {
+    create_before_destroy = true
   }
-  depends_on = [aws_api_gateway_method.method, aws_api_gateway_integration.integration]
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_rest_api.jarvan.body, aws_api_gateway_resource.interaction.id,
+      aws_api_gateway_method.jarvan_interaction.id, aws_api_gateway_integration.integration.id
+    ]))
+  }
+  depends_on = [
+    aws_api_gateway_resource.interaction, aws_api_gateway_method.jarvan_interaction,
+    aws_api_gateway_integration.integration
+  ]
 }
 
 resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
-  rest_api_id   = aws_api_gateway_rest_api.own_api.id
+  rest_api_id   = aws_api_gateway_rest_api.jarvan.id
   stage_name    = "dev"
   depends_on    = [aws_cloudwatch_log_group.api_gw_logs]
   access_log_settings {
@@ -134,8 +159,8 @@ resource "aws_iam_role_policy" "api_gateway_policy" {
         Resource = ["*"]
       },
       {
-        Action   = "states:StartExecution",
-        Resource  = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
+        Action   = "states:StartSyncExecution",
+        Resource = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
         Effect   = "Allow"
       }
     ]
@@ -181,7 +206,7 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
 resource "aws_sfn_state_machine" "stepFunction" {
   name     = "stepFunction"
   role_arn = aws_iam_role.stepFunctionRole.arn
-#  depends_on = [var.lambda_function_arns]
+  type     = "EXPRESS"
 
   definition = <<EOF
 {

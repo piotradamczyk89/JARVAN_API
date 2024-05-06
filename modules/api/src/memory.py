@@ -51,11 +51,7 @@ def handler(event, context):
         #     "headers": {"Content-Type": "application/json"},
         #     "body": json.dumps({"reply": answer.content})
         # }
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"name": "jestem w memory"})
-        }
+        return {"answer": "jestem w memory"}
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
         return {

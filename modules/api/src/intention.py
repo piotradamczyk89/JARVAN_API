@@ -45,9 +45,9 @@ answer_question_schema = {
 
 def handler(event, context):
     try:
-        logger.warning(event)
-        question = event['question']
-        logger.info(f"request body:\n {question}")
+        # logger.warning(event)
+        # question = event['question']
+        # logger.info(f"request body:\n {question}")
 
         # chat = ChatOpenAI(openai_api_key=get_secret(), temperature=0).bind(
         #     functions=[save_memory_schema, answer_question_schema])
