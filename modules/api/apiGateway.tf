@@ -53,7 +53,7 @@ resource "aws_api_gateway_integration" "integration" {
   integration_http_method = "POST"
   type                    = "AWS"
   uri                     = "arn:aws:apigateway:${var.myregion}:states:action/StartSyncExecution"
-  credentials             = aws_iam_role.api_gw_role.arn
+  credentials             = aws_iam_role.api_gateway_step_function_role.arn
 
   request_templates = {
     "application/json" = jsonencode({
@@ -108,10 +108,10 @@ resource "aws_api_gateway_stage" "stage" {
 #log
 
 resource "aws_api_gateway_account" "api_account" {
-  cloudwatch_role_arn = aws_iam_role.api_gw_role.arn
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_role.arn
 
   depends_on = [
-    aws_iam_role_policy.api_gateway_policy
+    aws_iam_role_policy.api_gateway_cloudwatch_policy
   ]
 }
 
@@ -120,7 +120,7 @@ resource "aws_cloudwatch_log_group" "api_gw_logs" {
   retention_in_days = 7
 }
 
-resource "aws_iam_role" "api_gw_role" {
+resource "aws_iam_role" "api_gateway_cloudwatch_role" {
   name = "api_gateway_cloudwatch_role"
 
   assume_role_policy = jsonencode({
@@ -136,12 +136,9 @@ resource "aws_iam_role" "api_gw_role" {
     ]
   })
 }
-
-
-// TODO split this api gatway policy make it two
-resource "aws_iam_role_policy" "api_gateway_policy" {
-  name = "api_gw_logging_policy"
-  role = aws_iam_role.api_gw_role.id
+resource "aws_iam_role_policy" "api_gateway_cloudwatch_policy" {
+  name = "api_gateway_cloudwatch_policy"
+  role = aws_iam_role.api_gateway_cloudwatch_role.id
 
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -154,10 +151,38 @@ resource "aws_iam_role_policy" "api_gateway_policy" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
           "logs:PutLogEvents",
-          "apigateway:*"
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
         ]
         Resource = ["*"]
+      }
+    ]
+  })
+}
+resource "aws_iam_role" "api_gateway_step_function_role" {
+  name = "api_gateway_step_function_role"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
       },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_gateway_step_function_policy" {
+  name = "api_gateway_step_function_policy"
+  role = aws_iam_role.api_gateway_step_function_role.id
+
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
       {
         Action   = "states:StartSyncExecution",
         Resource = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
@@ -203,6 +228,8 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
   })
 }
 
+
+//TODO create .tftpl file to move stepfunction definition to the template file follow: https://awstip.com/invoke-your-step-function-with-api-gateway-8a9c060026ce
 resource "aws_sfn_state_machine" "stepFunction" {
   name     = "stepFunction"
   role_arn = aws_iam_role.stepFunctionRole.arn
