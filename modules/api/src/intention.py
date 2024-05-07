@@ -45,20 +45,15 @@ answer_question_schema = {
 
 def handler(event, context):
     try:
-        # logger.warning(event)
-        # question = event['question']
-        # logger.info(f"request body:\n {question}")
-
-        # chat = ChatOpenAI(openai_api_key=get_secret(), temperature=0).bind(
-        #     functions=[save_memory_schema, answer_question_schema])
-        # answer = chat.invoke([HumanMessage(question)])
-
-        # return {
-        #     "statusCode": 200,
-        #     "headers": {"Content-Type": "application/json"},
-        #     "body": json.dumps({"reply": answer.content})
-        # }
-        return {"name": "saveMemory"}
+        logger.warning(event)
+        logger.warning(context)
+        question = event['question']
+        chat = ChatOpenAI(temperature=0, openai_api_key=get_secret()).bind(
+            functions=[save_memory_schema, answer_question_schema])
+        answer = chat.invoke([HumanMessage(question)])
+        data = answer.additional_kwargs.get('function_call')
+        data['arguments'] = json.loads(data['arguments'])
+        return data
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
         return {

@@ -24,9 +24,9 @@ resource "aws_api_gateway_model" "responseModel" {
     "$schema"  = "https://json-schema.org/draft/2020-12/schema"
     title      = "api gateway response model"
     type       = "object"
-    required   = ["answer"]
+    required   = ["reply"]
     properties = {
-      answer = {
+      reply = {
         type = "string"
       }
     }
