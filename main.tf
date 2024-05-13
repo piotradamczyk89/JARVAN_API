@@ -27,7 +27,11 @@ module "api" {
       runtime ="python3.12"
       extension = "py"
     },
-    answer = {
+    answerMemory = {
+      runtime ="python3.12"
+      extension = "py"
+    },
+    answerInternet = {
       runtime ="python3.12"
       extension = "py"
     },
@@ -36,6 +40,7 @@ module "api" {
   myregion = var.myregion
   openAIKey = var.openAIKey
   dynamodb_access_policy_arn = module.table.policy_arn
+  serpAPIKey = var.serpAPIKey
 
 }
 

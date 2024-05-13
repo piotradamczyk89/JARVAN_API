@@ -11,7 +11,7 @@ logger.setLevel(logging.INFO)
 
 system_message = """You have to answer a human question as short as possible. 
 RULES $$$
-- at first use only data in context to answer questions
+- use only data in context to answer questions
 - IMPORTANT each data in context  will have a timestamp. If two or more information can give the answer for the question use this one with bigger timestamp
 - if context do not have necessary information only in this kind of scenario use your own knowledge
 

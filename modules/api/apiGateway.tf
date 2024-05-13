@@ -268,11 +268,16 @@ resource "aws_sfn_state_machine" "stepFunction" {
         },
         {
           "Variable": "$.name",
-          "StringEquals": "answerQuestion",
-          "Next": "answer"
+          "StringEquals": "answerMemoryQuestion",
+          "Next": "answerMemory"
+        },
+        {
+          "Variable": "$.name",
+          "StringEquals": "answerInternetQuestion",
+          "Next": "answerInternet"
         }
       ],
-      "Default": "answer"
+      "Default": "answerInternet"
     },
     "memory": {
       "Type": "Task",
@@ -292,9 +297,27 @@ resource "aws_sfn_state_machine" "stepFunction" {
       ],
       "End": true
     },
-    "answer": {
+    "answerMemory": {
       "Type": "Task",
-      "Resource": "${aws_lambda_function.lambda["answer"].arn}",
+      "Resource": "${aws_lambda_function.lambda["answerMemory"].arn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    },
+    "answerInternet": {
+      "Type": "Task",
+      "Resource": "${aws_lambda_function.lambda["answerInternet"].arn}",
       "Retry": [
         {
           "ErrorEquals": [
