@@ -1,10 +1,26 @@
-# To install dependency for python lambda use: 
+# To install dependency for python lambda layer: 
 
-> pip install --platform manylinux2014_x86_64 --implementation cp --only-binary=:all: -r requirements.txt -t python\lib\python3.12\
+first move to:
 
-# Set an OpenAPI key for windows: 
+>cd modules\api\src\lambda_layer_dependencies
 
-> set TF_VAR_openAIKey=open-api-key
+then add desired dependencies to the __requirements.txt__  and run:
+
+> pip install --platform manylinux2014_x86_64 --only-binary=:all: -r requirements.txt -t python\python\lib\python3.12\site-packages
+
+to install ser api with google use in addition to above:  
+
+> pip install google-search-results -t python\python\lib\python3.12\site-packages
+
+
+right now you have to pack folder python by yourself 
+
+
+# Set  keys for windows: 
+
+> set TF_VAR_openAIKey=
+
+> set TF_VAR_serpAPIKey=
 
 # activate Python virtual env
 
