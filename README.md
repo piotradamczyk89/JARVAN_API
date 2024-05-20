@@ -2,18 +2,16 @@
 
 first move to:
 
->cd modules\api\src\lambda_layer_dependencies
+>cd modules\api\src\langchain_openAI_lambda_layer
 
 then add desired dependencies to the __requirements.txt__  and run:
 
-> pip install --platform manylinux2014_x86_64 --only-binary=:all: -r requirements.txt -t python\python\lib\python3.12\site-packages
+> pip install --platform manylinux2014_x86_64 --only-binary=:all: -r requirements.txt -t layer\python\lib\python3.12\site-packages
 
-to install ser api with google use in addition to above:  
+to install serpapi with google use in addition to above:  
 
-> pip install google-search-results -t python\python\lib\python3.12\site-packages
+> pip install google-search-results -t layer\python\lib\python3.12\site-packages
 
-
-right now you have to pack folder python by yourself 
 
 
 # Set  keys for windows: 
