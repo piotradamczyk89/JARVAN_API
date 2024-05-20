@@ -48,6 +48,3 @@ resource "aws_iam_policy" "conversation_table_access" {
   policy = data.aws_iam_policy_document.dynamodb-access.json
 }
 
-output "policy_arn" {
-  value = aws_iam_policy.conversation_table_access.arn
-}

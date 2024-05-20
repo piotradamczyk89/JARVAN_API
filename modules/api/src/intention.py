@@ -26,7 +26,8 @@ save_memory_schema = {
 }
 answer_memory_schema = {
     "name": "answerMemoryQuestion",
-    "description": """the user asks a question which indicates that he wants to refer to the jointly created memory of the model and his own. The question may concern his life, the life of his loved ones, his notes, or information he wrote down in shared memory. Examples of statements are:
+    "description": """the user asks a question which indicates that he wants to refer to the jointly created memory of the model and his own.
+     The question may concern his life, the life of his loved ones, his notes, or information he wrote down in shared memory. Examples of statements are:
 - what do we know about my car.
 - give me my son's PESEL number?
 - what does my wife like?
@@ -49,7 +50,7 @@ answer_memory_schema = {
 
 answer_internet_schema = {
     "name": "answerInternetQuestion",
-    "description": """The user is looking for information about a certain thing, phenomenon or simply information and (importantly) does not refer directly to shared memory. The questions may include:
+    "description": """The user is looking for information about a certain thing, phenomenon or simply information and (importantly) does not refer directly to shared memory. Examples: 
 - what is global warming?
 - how to write code in python?
 - what does it mean that something is ultra-right-wing?

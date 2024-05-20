@@ -15,6 +15,7 @@ resource "aws_api_gateway_method" "jarvan_interaction" {
   rest_api_id   = aws_api_gateway_rest_api.jarvan.id
 }
 
+
 resource "aws_api_gateway_model" "responseModel" {
   rest_api_id  = aws_api_gateway_rest_api.jarvan.id
   name         = "responseModel"
@@ -52,15 +53,46 @@ resource "aws_api_gateway_integration" "integration" {
   rest_api_id             = aws_api_gateway_rest_api.jarvan.id
   integration_http_method = "POST"
   type                    = "AWS"
-  uri                     = "arn:aws:apigateway:${var.myregion}:states:action/StartSyncExecution"
+  uri                     = "arn:aws:apigateway:${var.myRegion}:states:action/StartSyncExecution"
   credentials             = aws_iam_role.api_gateway_step_function_role.arn
 
   request_templates = {
     "application/json" = jsonencode({
       input           = "$util.escapeJavaScript($input.json('$'))",
-      stateMachineArn = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
+      stateMachineArn = "arn:aws:states:${var.myRegion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
     })
   }
+}
+
+
+resource "aws_api_gateway_resource" "slack" {
+  parent_id   = aws_api_gateway_rest_api.jarvan.root_resource_id
+  path_part   = "slack"
+  rest_api_id = aws_api_gateway_rest_api.jarvan.id
+}
+
+resource "aws_api_gateway_method" "slack_method" {
+  authorization = "NONE"
+  http_method   = "POST"
+  resource_id   = aws_api_gateway_resource.slack.id
+  rest_api_id   = aws_api_gateway_rest_api.jarvan.id
+}
+
+resource "aws_lambda_permission" "slack_lambda" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda["slack"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${var.myRegion}:${var.accountID}:${aws_api_gateway_rest_api.jarvan.id}/*/${aws_api_gateway_method.slack_method.http_method}${aws_api_gateway_resource.slack.path}"
+}
+
+resource "aws_api_gateway_integration" "slack_integration" {
+  http_method             = aws_api_gateway_method.slack_method.http_method
+  resource_id             = aws_api_gateway_resource.slack.id
+  rest_api_id             = aws_api_gateway_rest_api.jarvan.id
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.lambda["slack"].invoke_arn
 }
 
 resource "aws_api_gateway_integration_response" "MyDemoIntegrationResponse" {
@@ -82,13 +114,15 @@ resource "aws_api_gateway_deployment" "deployment" {
   }
   triggers = {
     redeployment = sha1(jsonencode([
-      aws_api_gateway_rest_api.jarvan.body, aws_api_gateway_resource.interaction.id,
-      aws_api_gateway_method.jarvan_interaction.id, aws_api_gateway_integration.integration.id
+      aws_api_gateway_rest_api.jarvan.body, aws_api_gateway_resource.interaction.id, aws_api_gateway_resource.slack.id,
+      aws_api_gateway_method.jarvan_interaction.id, aws_api_gateway_integration.integration.id,
+      aws_api_gateway_integration.slack_integration.id, aws_api_gateway_method.slack_method.id
     ]))
   }
   depends_on = [
-    aws_api_gateway_resource.interaction, aws_api_gateway_method.jarvan_interaction,
-    aws_api_gateway_integration.integration
+    aws_api_gateway_resource.interaction, aws_api_gateway_resource.slack,
+    aws_api_gateway_method.jarvan_interaction, aws_api_gateway_integration.integration,
+    aws_api_gateway_integration.slack_integration, aws_api_gateway_method.slack_method
   ]
 }
 
@@ -185,7 +219,7 @@ resource "aws_iam_role_policy" "api_gateway_step_function_policy" {
     Statement = [
       {
         Action   = "states:StartSyncExecution",
-        Resource = "arn:aws:states:${var.myregion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
+        Resource = "arn:aws:states:${var.myRegion}:${var.accountID}:stateMachine:${aws_sfn_state_machine.stepFunction.name}"
         Effect   = "Allow"
       }
     ]
