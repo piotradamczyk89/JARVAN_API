@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.myregion
+  region = var.myRegion
 }
 
 module "table" {
@@ -35,12 +35,16 @@ module "api" {
       runtime ="python3.12"
       extension = "py"
     },
+    slack = {
+      runtime ="python3.12"
+      extension = "py"
+    },
   }
   accountID = var.accountID
-  myregion = var.myregion
+  myRegion = var.myRegion
   openAIKey = var.openAIKey
-  dynamodb_access_policy_arn = module.table.policy_arn
+  dynamodb_access_policy_arn = module.table.table_policy_arn
   serpAPIKey = var.serpAPIKey
-
+  slackSigningSecret = var.slackSigningSecret
 }
 

@@ -1,11 +1,8 @@
 import json
 import boto3
-from botocore.exceptions import ClientError
-from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 import logging
 from serpapi import GoogleSearch
+from custom_methods import get_secret
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -36,11 +33,6 @@ def handler(event, context):
         search = GoogleSearch(params)
         result = search.get_dict()
         result = result.get('organic_results')[0].get('link')
-        # logger.warning()
-        # chat = ChatOpenAI(temperature=0.3, openai_api_key=get_secret("AIKey"))
-        # answer = chat.invoke(
-        #     ChatPromptTemplate.from_messages([("system", system_message), ("human", human_message)]).format_prompt(
-        #         context=result, question=event['arguments']['question']))
         return {"reply": result}
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
@@ -64,24 +56,3 @@ def handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": "Internal server error"})
         }
-
-
-def get_secret(secret_name):
-    region_name = "eu-central-1"
-
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
-    try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-    except ClientError as e:
-        print(e)
-        raise e
-
-    secret = json.loads(get_secret_value_response['SecretString'])['key']
-    return secret

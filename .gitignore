@@ -1,5 +1,5 @@
-/modules/api/src/lambda_layer_dependencies/python/
-/modules/api/src/lambda_layer_dependencies/*.zip
+/modules/api/src/langchain_openAI_lambda_layer/layer/
+/modules/api/src/langchain_openAI_lambda_layer/*.zip
 /.idea/
 /jarvan/
 /.terraform/
@@ -8,3 +8,4 @@
 /modules/api/src/ai_question.zip
 /modules/api/src/*.zip
 /terraform.tfvars
+/modules/api/src/custom_layer/*.zip

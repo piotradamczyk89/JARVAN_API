@@ -9,7 +9,7 @@ variable "dynamodb_access_policy_arn" {
 variable "accountID" {
   type = string
 }
-variable "myregion" {
+variable "myRegion" {
   type = string
 }
 variable "openAIKey" {
@@ -22,3 +22,7 @@ variable "serpAPIKey" {
   sensitive = true
 }
 
+variable "slackSigningSecret" {
+  type = string
+  sensitive = true
+}

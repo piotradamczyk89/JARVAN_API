@@ -55,54 +55,42 @@ resource "aws_lambda_function" "lambda" {
   architectures = ["x86_64"]
 
   layers = contains(["python3.12", "python3.11", "python3.10", "python3.8", "python3.9"], each.value.runtime) ? [
-    aws_lambda_layer_version.lambda_layer.arn
+    aws_lambda_layer_version.lambda_layer.arn, aws_lambda_layer_version.lambda_layer_custom.arn
   ] : []
 }
 
 // lambda layer
-#TODO there must be an archive before start terraform apply - should be fixed. Depend on on lambda layer doesn't help. Without archive there is an error in lambda layer.
 data "archive_file" "python" {
   type        = "zip"
-  source_dir = "${path.module}/src/lambda_layer_dependencies/python"
-  output_path = "${path.module}/src/lambda_layer_dependencies/python.zip"
+  source_dir = "${path.module}/src/langchain_openAI_lambda_layer/layer"
+  output_path = "${path.module}/src/langchain_openAI_lambda_layer/python.zip"
 }
 
 resource "aws_lambda_layer_version" "lambda_layer" {
   depends_on               = [data.archive_file.python]
-  filename                 = "${path.module}/src/lambda_layer_dependencies/python.zip"
-  source_code_hash         = filebase64sha256("${path.module}/src/lambda_layer_dependencies/python.zip")
+  filename                 = data.archive_file.python.output_path
+  source_code_hash         = filebase64sha256(data.archive_file.python.output_path)
   layer_name               = "langchain_openai_AND_langchain_core"
   compatible_architectures = ["x86_64"]
 
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }
 
-#output "lambda_function_arns" {
-#  value       = {for lambda in aws_lambda_function.lambda : lambda.function_name => lambda.arn}
-#  description = "Map of Lambda function names to their ARNs"
-#}
+data "archive_file" "custom_methods" {
+  type        = "zip"
+  source_dir = "${path.module}/src/custom_layer/layer"
+  output_path = "${path.module}/src/custom_layer/custom_methods.zip"
+}
+resource "aws_lambda_layer_version" "lambda_layer_custom" {
+  depends_on               = [data.archive_file.custom_methods]
+  filename                 = data.archive_file.custom_methods.output_path
+  source_code_hash         = filebase64sha256(data.archive_file.custom_methods.output_path)
+  layer_name               = "custom_methods"
+  compatible_architectures = ["x86_64"]
 
-// secret manager
-
-resource "aws_secretsmanager_secret" "AIKey" {
-  name        = "AIKey"
-  description = "Open AI key"
+  compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }
 
-resource "aws_secretsmanager_secret_version" "example" {
-  secret_id     = aws_secretsmanager_secret.AIKey.id
-  secret_string = jsonencode({ key = var.openAIKey })
-}
-
-resource "aws_secretsmanager_secret" "SerpAPI" {
-  name        = "SerpAPI"
-  description = "SerpAPI key"
-}
-
-resource "aws_secretsmanager_secret_version" "SerpAPIKey" {
-  secret_id     = aws_secretsmanager_secret.SerpAPI.id
-  secret_string = jsonencode({ key = var.serpAPIKey })
-}
 
 // cloud watch
 
