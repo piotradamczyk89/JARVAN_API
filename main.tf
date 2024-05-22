@@ -13,6 +13,20 @@ provider "aws" {
 
 module "table" {
   source = "./modules/table"
+  tables = {
+    conversation = {
+      hash_key = {
+        name = "timestamp"
+        type = "N"
+      }
+      range_key = [
+        {
+          name = "userID"
+          type = "S"
+        }
+      ]
+    }
+  }
 }
 
 module "api" {
@@ -42,9 +56,7 @@ module "api" {
   }
   accountID = var.accountID
   myRegion = var.myRegion
-  openAIKey = var.openAIKey
   dynamodb_access_policy_arn = module.table.table_policy_arn
-  serpAPIKey = var.serpAPIKey
-  slackSigningSecret = var.slackSigningSecret
+
 }
 
