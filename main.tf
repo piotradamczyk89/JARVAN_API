@@ -36,22 +36,27 @@ module "api" {
     intention = {
       runtime ="python3.12"
       extension = "py"
+      desired_layers = ["langchain_layer", "custom_layer"]
     },
     memory = {
       runtime ="python3.12"
       extension = "py"
+      desired_layers = ["langchain_layer", "custom_layer"]
     },
     answerMemory = {
       runtime ="python3.12"
       extension = "py"
+      desired_layers = []
     },
     answerInternet = {
       runtime ="python3.12"
       extension = "py"
+      desired_layers = ["langchain_layer", "custom_layer"]
     },
     slack = {
       runtime ="python3.12"
       extension = "py"
+      desired_layers = ["custom_layer"]
     },
   }
   accountID = var.accountID
