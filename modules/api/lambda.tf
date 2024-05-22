@@ -1,5 +1,5 @@
 locals {
-  layer = ["langchain_layer", "custom_layer"]
+  layers = ["langchain_layer", "custom_layer"]
 }
 
 
@@ -58,9 +58,9 @@ resource "aws_lambda_function" "lambda" {
   runtime          = each.value.runtime
   timeout          = 60
   architectures = ["x86_64"]
-  layers = contains(["python3.12", "python3.11", "python3.10", "python3.8", "python3.9"], each.value.runtime) ? [
-    aws_lambda_layer_version.lambda_layer_langchain.arn, aws_lambda_layer_version.lambda_layer_custom.arn
-  ] : []
+
+  layers = [for layer in aws_lambda_layer_version.lambda_layer : layer.arn if contains(each.value.desired_layers,layer.layer_name )]
+
   environment {
     variables = {
       my_aws_region = var.myRegion
@@ -69,45 +69,22 @@ resource "aws_lambda_function" "lambda" {
 }
 
 // lambda layer
-#data "archive_file" "layer_zip" {
-#  for_each = local.layer
-#  type        = "zip"
-#  source_dir = "${path.module}/src/${each.value}/layer"
-#  output_path = "${path.module}/src/${each.value}/python.zip"
-#}
-
-data "archive_file" "langchain" {
+data "archive_file" "layer_zip" {
+  for_each = toset(local.layers)
   type        = "zip"
-  source_dir = "${path.module}/src/langchain_layer/layer"
-  output_path = "${path.module}/src/langchain_layer/python.zip"
+  source_dir = "${path.module}/src/${each.value}/layer"
+  output_path = "${path.module}/src/${each.value}/${each.value}.zip"
 }
 
-resource "aws_lambda_layer_version" "lambda_layer_langchain" {
-  depends_on               = [data.archive_file.langchain]
-  filename                 = data.archive_file.langchain.output_path
-  source_code_hash         = filebase64sha256(data.archive_file.langchain.output_path)
-  layer_name               = "langchain_layer"
+resource "aws_lambda_layer_version" "lambda_layer" {
+  for_each = toset(local.layers)
+  filename                 = data.archive_file.layer_zip[each.key].output_path
+  source_code_hash         = filebase64sha256(data.archive_file.layer_zip[each.key].output_path)
+  layer_name               = each.value
   compatible_architectures = ["x86_64"]
 
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }
-
-data "archive_file" "custom_layer" {
-  type        = "zip"
-  source_dir = "${path.module}/src/custom_layer/layer"
-  output_path = "${path.module}/src/custom_layer/custom_layer.zip"
-}
-resource "aws_lambda_layer_version" "lambda_layer_custom" {
-  depends_on               = [data.archive_file.custom_layer]
-  filename                 = data.archive_file.custom_layer.output_path
-  source_code_hash         = filebase64sha256(data.archive_file.custom_layer.output_path)
-  layer_name               = "custom_methods"
-  compatible_architectures = ["x86_64"]
-
-  compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
-}
-
-
 // cloud watch
 
 resource "aws_cloudwatch_log_group" "lambda_log_group" {
