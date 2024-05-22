@@ -1,5 +1,4 @@
-/modules/api/src/langchain_openAI_lambda_layer/layer/
-/modules/api/src/langchain_openAI_lambda_layer/*.zip
+/modules/api/src/langchain_layer/layer/
 /.idea/
 /jarvan/
 /.terraform/
@@ -9,3 +8,4 @@
 /modules/api/src/*.zip
 /terraform.tfvars
 /modules/api/src/custom_layer/*.zip
+/modules/api/src/langchain_layer/*.zip

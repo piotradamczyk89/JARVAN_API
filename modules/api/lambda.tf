@@ -1,3 +1,8 @@
+locals {
+  layer = ["langchain_layer", "custom_layer"]
+}
+
+
 //Lambda role
 
 data "aws_iam_policy_document" "assume_role" {
@@ -53,38 +58,49 @@ resource "aws_lambda_function" "lambda" {
   runtime          = each.value.runtime
   timeout          = 60
   architectures = ["x86_64"]
-
   layers = contains(["python3.12", "python3.11", "python3.10", "python3.8", "python3.9"], each.value.runtime) ? [
-    aws_lambda_layer_version.lambda_layer.arn, aws_lambda_layer_version.lambda_layer_custom.arn
+    aws_lambda_layer_version.lambda_layer_langchain.arn, aws_lambda_layer_version.lambda_layer_custom.arn
   ] : []
+  environment {
+    variables = {
+      my_aws_region = var.myRegion
+    }
+  }
 }
 
 // lambda layer
-data "archive_file" "python" {
+#data "archive_file" "layer_zip" {
+#  for_each = local.layer
+#  type        = "zip"
+#  source_dir = "${path.module}/src/${each.value}/layer"
+#  output_path = "${path.module}/src/${each.value}/python.zip"
+#}
+
+data "archive_file" "langchain" {
   type        = "zip"
-  source_dir = "${path.module}/src/langchain_openAI_lambda_layer/layer"
-  output_path = "${path.module}/src/langchain_openAI_lambda_layer/python.zip"
+  source_dir = "${path.module}/src/langchain_layer/layer"
+  output_path = "${path.module}/src/langchain_layer/python.zip"
 }
 
-resource "aws_lambda_layer_version" "lambda_layer" {
-  depends_on               = [data.archive_file.python]
-  filename                 = data.archive_file.python.output_path
-  source_code_hash         = filebase64sha256(data.archive_file.python.output_path)
-  layer_name               = "langchain_openai_AND_langchain_core"
+resource "aws_lambda_layer_version" "lambda_layer_langchain" {
+  depends_on               = [data.archive_file.langchain]
+  filename                 = data.archive_file.langchain.output_path
+  source_code_hash         = filebase64sha256(data.archive_file.langchain.output_path)
+  layer_name               = "langchain_layer"
   compatible_architectures = ["x86_64"]
 
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11", "python3.12"]
 }
 
-data "archive_file" "custom_methods" {
+data "archive_file" "custom_layer" {
   type        = "zip"
   source_dir = "${path.module}/src/custom_layer/layer"
-  output_path = "${path.module}/src/custom_layer/custom_methods.zip"
+  output_path = "${path.module}/src/custom_layer/custom_layer.zip"
 }
 resource "aws_lambda_layer_version" "lambda_layer_custom" {
-  depends_on               = [data.archive_file.custom_methods]
-  filename                 = data.archive_file.custom_methods.output_path
-  source_code_hash         = filebase64sha256(data.archive_file.custom_methods.output_path)
+  depends_on               = [data.archive_file.custom_layer]
+  filename                 = data.archive_file.custom_layer.output_path
+  source_code_hash         = filebase64sha256(data.archive_file.custom_layer.output_path)
   layer_name               = "custom_methods"
   compatible_architectures = ["x86_64"]
 
