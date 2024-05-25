@@ -33,35 +33,44 @@ module "api" {
   source = "./modules/api"
 
   lambda_functions = {
-    intention = {
+    proxy_intention = {
       runtime ="python3.12"
       extension = "py"
       desired_layers = ["langchain_layer", "custom_layer"]
+      role = aws_iam_role.proxy_intention_lambda.arn
+      environment = ["my_aws_region"]
     },
     memory = {
       runtime ="python3.12"
       extension = "py"
-      desired_layers = ["langchain_layer", "custom_layer"]
+      desired_layers = []
+      role = aws_iam_role.slack_lambda.arn
+      environment = []
     },
     answerMemory = {
       runtime ="python3.12"
       extension = "py"
       desired_layers = []
+      role = aws_iam_role.slack_lambda.arn
+      environment = []
     },
     answerInternet = {
       runtime ="python3.12"
       extension = "py"
-      desired_layers = ["langchain_layer", "custom_layer"]
+      desired_layers = []
+      role = aws_iam_role.slack_lambda.arn
+      environment = []
     },
     slack = {
       runtime ="python3.12"
       extension = "py"
       desired_layers = ["custom_layer"]
+      role = aws_iam_role.slack_lambda.arn
+      environment = ["sqsUrl","my_aws_region"]
     },
   }
   accountID = var.accountID
   myRegion = var.myRegion
-  dynamodb_access_policy_arn = module.table.table_policy_arn
 
 }
 

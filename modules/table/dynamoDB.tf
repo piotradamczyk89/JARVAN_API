@@ -24,22 +24,7 @@ data "aws_iam_policy_document" "dynamodb-access" {
   statement {
     sid = "1"
     actions = [
-      "dynamodb:GetShardIterator",
-      "dynamodb:Scan",
-      "dynamodb:Query",
-      "dynamodb:DescribeStream",
-      "dynamodb:GetRecords",
-      "dynamodb:ListStreams",
-      "dynamodb:BatchGetItem",
-      "dynamodb:BatchWriteItem",
-      "dynamodb:ConditionCheckItem",
       "dynamodb:PutItem",
-      "dynamodb:DescribeTable",
-      "dynamodb:DeleteItem",
-      "dynamodb:GetItem",
-      "dynamodb:Scan",
-      "dynamodb:Query",
-      "dynamodb:UpdateItem"
     ]
     resources = [for key, table in aws_dynamodb_table.tables : table.arn]
   }

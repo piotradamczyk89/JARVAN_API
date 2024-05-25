@@ -1,7 +1,6 @@
 import json
 import logging
-import boto3
-from botocore.exceptions import ClientError
+from custom_methods import get_secret
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
@@ -70,61 +69,28 @@ answer_internet_schema = {
         ]
     }
 }
+cached_AIKey = None
 
 
 def handler(event, context):
+    global cached_AIKey
+    if cached_AIKey is None:
+        cached_AIKey = get_secret("AIKey")
     try:
-        logger.warning(event)
-        logger.warning(context)
-        question = event['question']
-        chat = ChatOpenAI(temperature=0, openai_api_key=get_secret()).bind(
-            functions=[save_memory_schema, answer_memory_schema, answer_internet_schema])
-        answer = chat.invoke([HumanMessage(question)])
-        data = answer.additional_kwargs.get('function_call')
-        data['arguments'] = json.loads(data['arguments'])
-        logger.warning(data)
-        return data
+        logger.info(event)
+        for record in event['Records']:
+            question = json.loads(record['body'])['text']
+            logger.info(question)
+            chat = ChatOpenAI(temperature=0, openai_api_key=cached_AIKey).bind(
+                functions=[save_memory_schema, answer_memory_schema, answer_internet_schema])
+            answer = chat.invoke([HumanMessage(question)])
+            data = answer.additional_kwargs.get('function_call')
+            data['arguments'] = json.loads(data['arguments'])
+            logger.info(data)
+            return data
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
-        # TODO error handling with step functions ??
-        return {
-            "statusCode": 400,  # Bad Request
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": f"Missing data: {str(e)}"})
-        }
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON format: {str(e)}")
-        return {
-            "statusCode": 400,  # Bad Request
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Invalid JSON format"})
-        }
-    except Exception as e:
-        logger.error(f"Internal Server Error: {str(e)}")
-        return {
-            "statusCode": 500,  # Internal Server Error
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Internal server error"})
-        }
-
-
-def get_secret():
-    secret_name = "AIKey"
-    region_name = "eu-central-1"
-
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
-    try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-    except ClientError as e:
-        print(e)
-        raise e
-
-    secret = json.loads(get_secret_value_response['SecretString'])['key']
-    return secret
+        raise
+    except Exception as er:
+        logger.error(f"Exception: {str(er)}")
+        raise

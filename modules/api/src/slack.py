@@ -2,10 +2,11 @@ import json
 import hmac
 import hashlib
 import logging
+import os
 import boto3
 from custom_methods import get_secret
-
 from models import SlackMessage
+from models import DecimalEncoder
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -13,23 +14,27 @@ cached_slack_secret = None
 
 
 def handler(event, context):
-    slack_message = None
     request_body = json.loads(event['body'])
     try:
         slack_message = SlackMessage(request_body)
     except ValueError as e:
         logger.error(f"Error initializing SlackMessage: {e}")
+        raise
     if verify(event) and slack_message is not None:
-        if request_body['type'] == "url_verification":
+        if slack_message.type == "url_verification":
             return {
                 'statusCode': 200,
                 'body': json.dumps({'challenge': request_body['challenge']})
             }
         elif slack_message.is_message_for_jarvan():
-            # TODO here we will push messages to the SQS
+            client = boto3.client("sqs")
+            response = client.send_message(QueueUrl=os.getenv('sqsUrl', ''),
+                                           MessageBody=json.dumps(slack_message.sanitized_message(),
+                                                                  cls=DecimalEncoder),
+                                           MessageGroupId='slack')
             return {
-                'statusCode': 200,
-                'body': "Jarvan was called"
+                'statusCode': response["ResponseMetadata"]["HTTPStatusCode"],
+                'body': json.dumps(response["ResponseMetadata"])
             }
         else:
             save_message(slack_message)
