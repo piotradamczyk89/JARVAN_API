@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from typing import Dict
 
@@ -7,8 +8,11 @@ class SlackMessage:
 
     def __init__(self, body: Dict):
         self.body = body
+        self.authorizations = body.get("authorizations", [])
+        self.type = body['type']
         try:
             self.message_event = body["event"]
+            self.text = self.message_event["text"]
         except KeyError as er:
             raise ValueError(f"Missing expected key: {er}")
         try:
@@ -19,8 +23,6 @@ class SlackMessage:
             }
         except KeyError as er:
             raise ValueError(f"Missing expected key in message event: {er}")
-
-        self.authorizations = body.get("authorizations", [])
 
     def is_bot_reply(self) -> bool:
         return "bot_id" in self.message_event
@@ -38,11 +40,17 @@ class SlackMessage:
         bot_id = self.get_bot_id()
         return bot_id and f"<@{bot_id}>" in self.message.get("text", "")
 
-    def sanitized_text(self) -> str:
+    def sanitized_message(self) -> dict:
         """Removes bot id from direct messages"""
         bot_id = self.get_bot_id()
-        text = self.message.get("text", "")
         if not bot_id:
-            return text
-        return text.replace(f"<@{bot_id}>", "").strip()
+            return self.message
+        self.message.update({"text": self.message.get("text").replace(f"<@{bot_id}>", "").strip()})
+        return self.message
 
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
