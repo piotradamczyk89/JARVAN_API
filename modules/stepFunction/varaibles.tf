@@ -20,8 +20,3 @@ variable "lambda_layers" {
     compatible_runtimes        = list(string)
   }))
 }
-
-variable "step_function_arn" {
-  type        = string
-}
-

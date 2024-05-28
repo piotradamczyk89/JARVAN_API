@@ -10,7 +10,7 @@ logger.setLevel(logging.INFO)
 
 
 def get_secret(secret_name):
-    region_name = os.getenv('my_aws_region', 'eu-central-1')
+    region_name = os.getenv('MY_AWS_REGION', 'eu-central-1')
     session = boto3.session.Session()
     client = session.client(
         service_name='secretsmanager',

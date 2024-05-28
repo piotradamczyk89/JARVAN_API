@@ -1,5 +1,5 @@
 resource "aws_iam_role" "stepFunctionRole" {
-  name = "example-sfn-role"
+  name = "sfn-role"
 
   assume_role_policy = jsonencode({
     Version   = "2012-10-17"
@@ -10,6 +10,20 @@ resource "aws_iam_role" "stepFunctionRole" {
         Principal = {
           Service = "states.amazonaws.com"
         }
+      },
+      {
+        Action = [
+          "logs:CreateLogDelivery",
+          "logs:GetLogDelivery",
+          "logs:UpdateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutResourcePolicy",
+          "logs:DescribeResourcePolicies",
+          "logs:DescribeLogGroups",
+        ],
+        Effect   = "Allow",
+        Resource = "*",
       },
     ]
   })
@@ -31,11 +45,22 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
   })
 }
 
+
+resource "aws_cloudwatch_log_group" "step_function_log_group" {
+  name              = "step-functions-log-group"
+  retention_in_days = 7
+}
+
 //TODO create .tftpl file to move stepfunction definition to the template file follow: https://awstip.com/invoke-your-step-function-with-api-gateway-8a9c060026ce
 resource "aws_sfn_state_machine" "stepFunction" {
   name     = "stepFunction"
   role_arn = aws_iam_role.stepFunctionRole.arn
-  type     = "EXPRESS"
+  type     = "STANDARD"
+  logging_configuration {
+    level = "ALL"
+    include_execution_data = true
+    log_destination = "${aws_cloudwatch_log_group.step_function_log_group.arn}:*"
+  }
 
   definition = <<EOF
 {
@@ -120,6 +145,7 @@ resource "aws_sfn_state_machine" "stepFunction" {
   }
 }
 EOF
+
 }
 
 

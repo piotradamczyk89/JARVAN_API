@@ -36,7 +36,7 @@ data "aws_iam_policy_document" "send_message_policy_doc" {
     actions = [
       "sqs:SendMessage"
     ]
-    resources = [module.api.sqs_arn]
+    resources = [var.sqs_arn]
   }
 }
 
@@ -47,7 +47,7 @@ data "aws_iam_policy_document" "receive_message_policy_doc" {
       "sqs:DeleteMessage",
       "sqs:GetQueueAttributes"
     ]
-    resources = [module.api.sqs_arn]
+    resources = [var.sqs_arn]
   }
 }
 
@@ -96,13 +96,11 @@ resource "aws_iam_policy" "kms_decrypt_policy" {
 
 
 
-
-#TODO przemysleć czy nie lepiej zrobic prze "aws_iam_role_policy_attachment"
 resource "aws_iam_role" "slack_lambda" {
   name                = "slack_lambda"
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
-    module.table.table_policy_arn,
+    var.conversation_table_access,
     aws_iam_policy.logs_policy.arn,
     aws_iam_policy.secretmanager_policy.arn,
     aws_iam_policy.send_message_policy.arn,

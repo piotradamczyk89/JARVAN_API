@@ -3,10 +3,9 @@ locals {
   layers = toset(flatten(concat([for el in var.lambda_functions : el.desired_layers])))
   environments = {
     "MY_AWS_REGION" = var.myRegion
-    "SQS_URL" = aws_sqs_queue.queue.url
-    "STEP_FUNCTION_ARN" = var.step_function_arn
   }
 }
+
 // lambda
 
 data "archive_file" "lambda" {
@@ -33,6 +32,9 @@ resource "aws_lambda_function" "lambda" {
     variables = { for key, value in local.environments : key => value if contains(each.value.environment, key) }
   }
 }
+
+
+
 
 
 
