@@ -28,7 +28,7 @@ def handler(event, context):
             }
         elif slack_message.is_message_for_jarvan():
             client = boto3.client("sqs")
-            response = client.send_message(QueueUrl=os.getenv('sqsUrl', ''),
+            response = client.send_message(QueueUrl=os.getenv('SQS_URL', ''),
                                            MessageBody=json.dumps(slack_message.sanitized_message(),
                                                                   cls=DecimalEncoder),
                                            MessageGroupId='slack')

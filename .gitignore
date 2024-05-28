@@ -1,11 +1,13 @@
-/modules/api/src/langchain_layer/layer/
+/modules/lambda_utils/langchain_layer/layer/
+/modules/lambda_utils/langchain_layer/*.zip
+/modules/lambda_utils/custom_layer/*.zip
+/modules/stepFunction/src/*.zip
+/modules/api/src/*.zip
 /.idea/
 /jarvan/
 /.terraform/
 /terraform.tfstate
 /terraform.tfstate.backup
 /modules/api/src/ai_question.zip
-/modules/api/src/*.zip
 /terraform.tfvars
-/modules/api/src/custom_layer/*.zip
-/modules/api/src/langchain_layer/*.zip
+

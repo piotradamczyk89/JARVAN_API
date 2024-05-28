@@ -1,5 +1,8 @@
 import json
 import logging
+import os
+
+import boto3
 from custom_methods import get_secret
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
@@ -87,7 +90,25 @@ def handler(event, context):
             data = answer.additional_kwargs.get('function_call')
             data['arguments'] = json.loads(data['arguments'])
             logger.info(data)
-            return data
+            step_function_arn = os.getenv('STEP_FUNCTION_ARN', '')
+            client = boto3.client('stepfunctions')
+            try:
+                response = client.start_execution(stateMachineArn=step_function_arn, input=json.dumps(data))
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps({
+                        'message': 'Step Function started successfully',
+                        'executionArn': response['executionArn']
+                    })
+                }
+            except Exception as e:
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps({
+                        'message': 'Error starting Step Function',
+                        'error': str(e)
+                    })
+                }
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
         raise
