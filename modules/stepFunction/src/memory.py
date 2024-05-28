@@ -8,7 +8,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def handler(event, context):
+def handler(event):
     create_memory(event['arguments'])
     return {"reply": "ok:)"}
 
