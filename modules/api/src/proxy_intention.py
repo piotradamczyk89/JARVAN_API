@@ -75,7 +75,7 @@ answer_internet_schema = {
 cached_AIKey = None
 
 
-def handler(event, context):
+def handler(event):
     global cached_AIKey
     if cached_AIKey is None:
         cached_AIKey = get_secret("AIKey")

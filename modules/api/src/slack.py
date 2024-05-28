@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 cached_slack_secret = None
 
 
-def handler(event, context):
+def handler(event):
     request_body = json.loads(event['body'])
     try:
         slack_message = SlackMessage(request_body)

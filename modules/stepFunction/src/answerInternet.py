@@ -20,7 +20,7 @@ dynamo = boto3.resource('dynamodb')
 table = dynamo.Table('conversation')
 
 
-def handler(event, context):
+def handler(event):
     try:
         params = {
             "q": event['arguments']['question'],

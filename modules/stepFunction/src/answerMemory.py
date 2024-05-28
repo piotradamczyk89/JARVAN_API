@@ -25,7 +25,7 @@ dynamo = boto3.resource('dynamodb')
 table = dynamo.Table('conversation')
 
 
-def handler(event, context):
+def handler(event):
     try:
         response = table.scan()
         body = response['Items']
@@ -39,7 +39,7 @@ def handler(event, context):
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
         return {
-            "statusCode": 400,  # Bad Request
+            "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": f"Missing data: {str(e)}"})
         }
@@ -47,14 +47,14 @@ def handler(event, context):
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON format: {str(e)}")
         return {
-            "statusCode": 400,  # Bad Request
+            "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": "Invalid JSON format"})
         }
     except Exception as e:
         logger.error(f"Internal Server Error: {str(e)}")
         return {
-            "statusCode": 500,  # Internal Server Error
+            "statusCode": 500,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": "Internal server error"})
         }
