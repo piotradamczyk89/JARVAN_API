@@ -25,7 +25,7 @@ dynamo = boto3.resource('dynamodb')
 table = dynamo.Table('conversation')
 
 
-def handler(event):
+def handler(event, context):
     try:
         response = table.scan()
         body = response['Items']

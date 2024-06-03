@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 cached_slack_secret = None
 
 
-def handler(event):
+def handler(event, context):
     request_body = json.loads(event['body'])
     try:
         slack_message = SlackMessage(request_body)
@@ -26,21 +26,21 @@ def handler(event):
                 'statusCode': 200,
                 'body': json.dumps({'challenge': request_body['challenge']})
             }
-        elif slack_message.is_message_for_jarvan():
-            client = boto3.client("sqs")
-            response = client.send_message(QueueUrl=os.getenv('SQS_URL', ''),
-                                           MessageBody=json.dumps(slack_message.sanitized_message(),
-                                                                  cls=DecimalEncoder),
-                                           MessageGroupId='slack')
-            return {
-                'statusCode': response["ResponseMetadata"]["HTTPStatusCode"],
-                'body': json.dumps(response["ResponseMetadata"])
-            }
         else:
+            satus_code = 200
+            body = "saved"
             save_message(slack_message)
+            if slack_message.is_message_for_jarvan():
+                client = boto3.client("sqs")
+                response = client.send_message(QueueUrl=os.getenv('SQS_URL', ''),
+                                               MessageBody=json.dumps(slack_message.sanitized_message(),
+                                                                      cls=DecimalEncoder),
+                                               MessageGroupId='slack')
+                satus_code = response["ResponseMetadata"]["HTTPStatusCode"]
+                body = json.dumps(response["ResponseMetadata"])
             return {
-                'statusCode': 200,
-                'body': "saved"
+                'statusCode': satus_code,
+                'body': body
             }
     else:
         return {

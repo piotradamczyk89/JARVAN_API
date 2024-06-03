@@ -45,9 +45,9 @@ module "step_function" {
     memory = {
       runtime        = "python3.12"
       extension      = "py"
-      desired_layers = []
-      role           = module.lambda_utils.slack_lambda_role
-      environment    = []
+      desired_layers = ["custom_layer"]
+      role           = module.lambda_utils.memory_lambda_role
+      environment    = ["MY_AWS_REGION"]
     },
     answerMemory = {
       runtime        = "python3.12"

@@ -3,6 +3,7 @@ import boto3
 import logging
 from serpapi import GoogleSearch
 from custom_methods import get_secret
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -20,7 +21,7 @@ dynamo = boto3.resource('dynamodb')
 table = dynamo.Table('conversation')
 
 
-def handler(event):
+def handler(event, context):
     try:
         params = {
             "q": event['arguments']['question'],
