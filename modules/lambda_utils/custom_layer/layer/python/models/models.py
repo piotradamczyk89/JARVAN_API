@@ -1,7 +1,13 @@
 import json
+import logging
+import os
 from decimal import Decimal
 from typing import Dict
 
+import boto3
+from botocore.exceptions import ClientError
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 class SlackMessage:
     """Encapsulates the message sent by the Slack API"""
@@ -54,3 +60,29 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, Decimal):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
+
+
+class ParameterStoreCache:
+    _cache = {}
+
+    def __init__(self):
+        region_name = os.getenv('MY_AWS_REGION', 'eu-central-1')
+        self.ssm = boto3.client('ssm', region_name=region_name)
+
+    def get_parameter(self, name, with_decryption=False):
+        logger.info("i am in get parameter")
+        logger.info(self._cache)
+        if name in self._cache:
+            return self._cache[name]
+
+        try:
+            response = self.ssm.get_parameter(
+                Name=name,
+                WithDecryption=with_decryption
+            )
+            parameter_value = response['Parameter']['Value']
+            self._cache[name] = parameter_value
+            return parameter_value
+        except ClientError as e:
+            print(f"An error occurred: {e}")
+            return None

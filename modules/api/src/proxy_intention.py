@@ -75,20 +75,22 @@ answer_internet_schema = {
 cached_AIKey = None
 
 
-def handler(event):
+def handler(event, context):
     global cached_AIKey
     if cached_AIKey is None:
         cached_AIKey = get_secret("AIKey")
     try:
         logger.info(event)
         for record in event['Records']:
-            question = json.loads(record['body'])['text']
+            body = json.loads(record['body'])
+            question = body['text']
             logger.info(question)
             chat = ChatOpenAI(temperature=0, openai_api_key=cached_AIKey).bind(
                 functions=[save_memory_schema, answer_memory_schema, answer_internet_schema])
             answer = chat.invoke([HumanMessage(question)])
             data = answer.additional_kwargs.get('function_call')
             data['arguments'] = json.loads(data['arguments'])
+            data.update({"metadata": body})
             logger.info(data)
             step_function_arn = os.getenv('STEP_FUNCTION_ARN', '')
             client = boto3.client('stepfunctions')

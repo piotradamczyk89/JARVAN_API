@@ -9,3 +9,7 @@ output "slack_lambda_role" {
 output "proxy_intention_lambda_role" {
   value = aws_iam_role.proxy_intention_lambda.arn
 }
+
+output "memory_lambda_role" {
+  value = aws_iam_role.memory_lambda.arn
+}

@@ -10,4 +10,6 @@
 /terraform.tfstate.backup
 /modules/api/src/ai_question.zip
 /terraform.tfvars
-
+/modules/lambda_utils/pinecone_layer/layer/
+/modules/lambda_utils/pinecone_layer/*.zip
+/modules/lambda_utils/custom_layer/layer/python/lib/

@@ -10,21 +10,7 @@ resource "aws_iam_role" "stepFunctionRole" {
         Principal = {
           Service = "states.amazonaws.com"
         }
-      },
-      {
-        Action = [
-          "logs:CreateLogDelivery",
-          "logs:GetLogDelivery",
-          "logs:UpdateLogDelivery",
-          "logs:DeleteLogDelivery",
-          "logs:ListLogDeliveries",
-          "logs:PutResourcePolicy",
-          "logs:DescribeResourcePolicies",
-          "logs:DescribeLogGroups",
-        ],
-        Effect   = "Allow",
-        Resource = "*",
-      },
+      }
     ]
   })
 }
@@ -41,6 +27,20 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
         Action   = "lambda:InvokeFunction"
         Resource = ["*"]
       },
+      {
+        Action = [
+          "logs:CreateLogDelivery",
+          "logs:GetLogDelivery",
+          "logs:UpdateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutResourcePolicy",
+          "logs:DescribeResourcePolicies",
+          "logs:DescribeLogGroups",
+        ],
+        Effect   = "Allow",
+        Resource = ["*"],
+      }
     ]
   })
 }
