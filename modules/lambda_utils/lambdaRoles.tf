@@ -78,6 +78,16 @@ data "aws_iam_policy_document" "get_parameter_store_policy_doc" {
   }
 }
 
+data "aws_iam_policy_document" "get_dynamodb_record_doc" {
+  statement {
+    actions = [
+      "dynamodb:BatchGetItem",
+      "dynamodb:GetItem"
+    ]
+    resources = ["*"]
+  }
+}
+
 
 
 
@@ -103,6 +113,10 @@ resource "aws_iam_policy" "kms_decrypt_policy" {
 resource "aws_iam_policy" "get_parameter_store_policy" {
   policy = data.aws_iam_policy_document.get_parameter_store_policy_doc.json
 }
+resource "aws_iam_policy" "get_dynamodb_record_policy" {
+  policy = data.aws_iam_policy_document.get_dynamodb_record_doc.json
+}
+
 
 
 
@@ -135,7 +149,22 @@ resource "aws_iam_role" "memory_lambda" {
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
     aws_iam_policy.logs_policy.arn,
-    aws_iam_policy.get_parameter_store_policy.arn
+    aws_iam_policy.get_parameter_store_policy.arn,
+    aws_iam_policy.secretmanager_policy.arn,
+    aws_iam_policy.kms_decrypt_policy.arn,
+    var.conversation_table_access,
+  ]
+}
+
+resource "aws_iam_role" "answer_memory_lambda" {
+  name                = "answer_memory_lambda"
+  assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
+  managed_policy_arns = [
+    aws_iam_policy.logs_policy.arn,
+    aws_iam_policy.get_parameter_store_policy.arn,
+    aws_iam_policy.secretmanager_policy.arn,
+    aws_iam_policy.kms_decrypt_policy.arn,
+    aws_iam_policy.get_dynamodb_record_policy.arn
   ]
 }
 

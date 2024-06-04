@@ -4,13 +4,12 @@ import hashlib
 import logging
 import os
 import boto3
-from custom_methods import get_secret
 from models import SlackMessage
 from models import DecimalEncoder
+from models import SecretManagerCache
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-cached_slack_secret = None
 
 
 def handler(event, context):
@@ -50,20 +49,22 @@ def handler(event, context):
 
 
 def verify(event):
-    global cached_slack_secret
-
     try:
         request_headers = event['headers']
         timestamp = request_headers['X-Slack-Request-Timestamp']
         slack_signature = request_headers['X-Slack-Signature']
     except KeyError as er:
         logger.error(f"Missing expected key: {er}")
+        return False
 
-    if not cached_slack_secret:
-        cached_slack_secret = get_secret("SlackSigningSecret").encode('utf-8')
+    secret_manager_cache = SecretManagerCache()
+    secret = secret_manager_cache.get_secret("SlackSigningSecret").encode('utf-8')
 
+    if secret is None:
+        logger.error("Error: SlackSigningSecret could not be retrieved.")
+        return False
     base_string = f"v0:{timestamp}:{event['body']}"
-    hmac_string = hmac.new(cached_slack_secret, base_string.encode('utf-8'), hashlib.sha256).hexdigest()
+    hmac_string = hmac.new(secret, base_string.encode('utf-8'), hashlib.sha256).hexdigest()
     computed_slack_signature = f'v0={hmac_string}'
     return computed_slack_signature == slack_signature
 

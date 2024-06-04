@@ -3,10 +3,9 @@ import logging
 import os
 
 import boto3
-from custom_methods import get_secret
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
-
+from models import SecretManagerCache
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -72,20 +71,21 @@ answer_internet_schema = {
         ]
     }
 }
-cached_AIKey = None
 
 
 def handler(event, context):
-    global cached_AIKey
-    if cached_AIKey is None:
-        cached_AIKey = get_secret("AIKey")
+    secret_manager_cache = SecretManagerCache()
+    ai_key = secret_manager_cache.get_secret("AIKey")
+    if ai_key is None:
+        logger.error("Error: AIKey could not be retrieved.")
+        return None
     try:
         logger.info(event)
         for record in event['Records']:
             body = json.loads(record['body'])
             question = body['text']
             logger.info(question)
-            chat = ChatOpenAI(temperature=0, openai_api_key=cached_AIKey).bind(
+            chat = ChatOpenAI(temperature=0, openai_api_key=ai_key).bind(
                 functions=[save_memory_schema, answer_memory_schema, answer_internet_schema])
             answer = chat.invoke([HumanMessage(question)])
             data = answer.additional_kwargs.get('function_call')

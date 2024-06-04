@@ -13,3 +13,6 @@ output "proxy_intention_lambda_role" {
 output "memory_lambda_role" {
   value = aws_iam_role.memory_lambda.arn
 }
+output "answer_memory_lambda_role" {
+  value = aws_iam_role.answer_memory_lambda.arn
+}

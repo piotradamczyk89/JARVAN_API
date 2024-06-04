@@ -3,8 +3,11 @@ import boto3
 from botocore.exceptions import ClientError
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 import logging
+from models import SecretManagerCache
+from pinecone import Pinecone
+from custom_methods import slack_bot_response
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -21,21 +24,39 @@ CONTEXT $$$
 
 human_message = "{question}"
 
-dynamo = boto3.resource('dynamodb')
-table = dynamo.Table('conversation')
+dynamodb = boto3.client('dynamodb')
 
 
 def handler(event, context):
     try:
-        response = table.scan()
-        body = response['Items']
-        context_string = '\n'.join([str(item['timestamp']) + ' - ' + item['memory'] for item in body])
+        secret_manager_cache = SecretManagerCache()
+        ai_key = secret_manager_cache.get_secret("AIKey")
+        if ai_key is None:
+            logger.error("Error: AIKey could not be retrieved.")
+            return None
+        pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
+        if pine_cone_key is None:
+            logger.error("Error: AIKey could not be retrieved.")
+            return None
 
-        chat = ChatOpenAI(temperature=0.3, openai_api_key=get_secret())
+        model_name = "text-embedding-3-small"
+        embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=ai_key)
+
+        vector_emb = embeddings.embed_query(event['arguments']['question'])
+        index_name = "brain"
+        pc = Pinecone(api_key=pine_cone_key)
+        index = pc.Index(index_name)
+        response = index.query(vector=vector_emb, top_k=3, include_values=True)
+        record_ids = [vector["id"] for vector in response["matches"]]
+        logger.info("ids:")
+        logger.info(record_ids)
+        context_string = "\n".join([item['metadata']['M']['text']['S'] for item in get_memories(record_ids)])
+
+        chat = ChatOpenAI(temperature=0.3, openai_api_key=ai_key)
         answer = chat.invoke(
             ChatPromptTemplate.from_messages([("system", system_message), ("human", human_message)]).format_prompt(
                 context=context_string, question=event['arguments']['question']))
-        return {"reply": answer.content}
+        slack_bot_response(answer.content)
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
         return {
@@ -44,39 +65,19 @@ def handler(event, context):
             "body": json.dumps({"error": f"Missing data: {str(e)}"})
         }
 
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON format: {str(e)}")
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Invalid JSON format"})
-        }
-    except Exception as e:
-        logger.error(f"Internal Server Error: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Internal server error"})
-        }
 
-
-def get_secret():
-    secret_name = "AIKey"
-    region_name = "eu-central-1"
-
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
+def get_memories(record_ids: list):
+    keys = [{'id': {'S': str(id_)}} for id_ in record_ids]
+    request_items = {"memory": {'Keys': keys}}
     try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-    except ClientError as e:
-        print(e)
-        raise e
+        # Batch get items from DynamoDB
+        response = dynamodb.batch_get_item(RequestItems=request_items)
 
-    secret = json.loads(get_secret_value_response['SecretString'])['key']
-    return secret
+        # Extract the retrieved items
+        items = response.get('Responses', {}).get("memory", [])
+        logger.info(items)
+        return items
+
+    except Exception as e:
+        logger.error(str(e))
+        return None

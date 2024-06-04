@@ -1,5 +1,5 @@
 locals {
-  layers = ["langchain_layer", "custom_layer"]
+  layers = ["langchain_layer", "custom_layer","pinecone_layer"]
 }
 
 data "archive_file" "layer_zip" {

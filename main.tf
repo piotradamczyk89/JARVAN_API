@@ -17,7 +17,7 @@ module "table" {
     conversation = {
       hash_key = {
         name = "timestamp"
-        type = "N"
+        type = "S"
       }
       range_key = [
         {
@@ -25,6 +25,12 @@ module "table" {
           type = "S"
         }
       ]
+    },
+    memory = {
+      hash_key = {
+        name = "id"
+        type = "S"
+      }
     }
   }
 }
@@ -45,16 +51,16 @@ module "step_function" {
     memory = {
       runtime        = "python3.12"
       extension      = "py"
-      desired_layers = ["custom_layer"]
+      desired_layers = ["custom_layer","langchain_layer","pinecone_layer"]
       role           = module.lambda_utils.memory_lambda_role
       environment    = ["MY_AWS_REGION"]
     },
     answerMemory = {
       runtime        = "python3.12"
       extension      = "py"
-      desired_layers = []
-      role           = module.lambda_utils.slack_lambda_role
-      environment    = []
+      desired_layers = ["custom_layer","langchain_layer","pinecone_layer"]
+      role           = module.lambda_utils.answer_memory_lambda_role
+      environment    = ["MY_AWS_REGION"]
     },
     answerInternet = {
       runtime        = "python3.12"
