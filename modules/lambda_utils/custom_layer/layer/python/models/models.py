@@ -6,8 +6,10 @@ from typing import Dict
 
 import boto3
 from botocore.exceptions import ClientError
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
 
 class SlackMessage:
     """Encapsulates the message sent by the Slack API"""
@@ -25,7 +27,7 @@ class SlackMessage:
             self.message = {
                 "text": self.message_event["text"],
                 "userID": self.message_event["user"],
-                "timestamp": Decimal(self.message_event["event_ts"])
+                "timestamp": str(self.message_event["event_ts"])
             }
         except KeyError as er:
             raise ValueError(f"Missing expected key in message event: {er}")
@@ -85,4 +87,42 @@ class ParameterStoreCache:
             return parameter_value
         except ClientError as e:
             print(f"An error occurred: {e}")
+            return None
+
+
+class SecretManagerCache:
+    _cache = {}
+
+    def __init__(self):
+        region_name = os.getenv('MY_AWS_REGION', 'eu-central-1')
+        session = boto3.session.Session()
+        self.client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
+
+    def get_secret(self, name):
+        if name in self._cache:
+            return self._cache[name]
+
+        try:
+            get_secret_value_response = self.client.get_secret_value(
+                SecretId=name
+            )
+            secret = json.loads(get_secret_value_response['SecretString'])['key']
+            self._cache[name] = secret
+            return secret
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'DecryptionFailureException':
+                logger.error("Secrets Manager can't decrypt the protected secret text using the provided KMS key.")
+            elif e.response['Error']['Code'] == 'InternalServiceErrorException':
+                logger.error("An error occurred on the server side.")
+            elif e.response['Error']['Code'] == 'InvalidParameterException':
+                logger.error("You provided an invalid value for a parameter.")
+            elif e.response['Error']['Code'] == 'InvalidRequestException':
+                logger.error("You provided a parameter value that is not valid for the current state of the resource.")
+            elif e.response['Error']['Code'] == 'ResourceNotFoundException':
+                logger.error("We can't find the resource that you asked for.")
+            else:
+                logger.error("An unknown error occurred:", e)
             return None
