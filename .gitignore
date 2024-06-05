@@ -1,7 +1,7 @@
 /modules/lambda_utils/langchain_layer/*.zip
 /modules/lambda_utils/langchain_layer/layer/python/lib/
 
-/modules/lambda_utils/pinecone_layer/layer/
+/modules/lambda_utils/pinecone_layer/layer/python/lib/
 /modules/lambda_utils/pinecone_layer/*.zip
 
 /modules/lambda_utils/custom_layer/layer/python/lib/

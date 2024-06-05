@@ -9,6 +9,8 @@ from models import SecretManagerCache
 from pinecone import Pinecone
 from custom_methods import slack_bot_response
 
+from open_ai_utils import get_embeddings
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -33,10 +35,8 @@ def handler(event, context):
         ai_key = secret_manager_cache.get_secret("AIKey")
         pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
 
-        model_name = "text-embedding-3-small"
-        embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=ai_key)
+        vector_emb = get_embeddings(event['arguments']['question'], ai_key)
 
-        vector_emb = embeddings.embed_query(event['arguments']['question'])
         index_name = "brain"
         pc = Pinecone(api_key=pine_cone_key)
         index = pc.Index(index_name)
