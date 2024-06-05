@@ -1,18 +1,17 @@
 import logging
 
 import openai
+from langchain_openai import OpenAIEmbeddings
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def get_embeddings(text):
+def get_embeddings(text, ai_key):
     try:
-        response = openai.Embedding.create(
-            input=text,
-            model="text-embedding-ada-002"  # or whichever model you are using
-        )
-        return response['data'][0]['embedding']
+        model_name = "text-embedding-3-small"
+        embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=ai_key)
+        return embeddings.embed_query(text)
     except openai.error.InvalidRequestError as e:
         logger.error(f"Invalid request: {e}")
         raise e
