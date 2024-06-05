@@ -30,3 +30,4 @@ def slack_bot_response(message):
     except requests.exceptions.RequestException as e:
         logger.error(f"HTTP Request failed: {e}")
         return None
+

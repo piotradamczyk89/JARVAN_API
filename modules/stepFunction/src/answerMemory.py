@@ -31,13 +31,7 @@ def handler(event, context):
     try:
         secret_manager_cache = SecretManagerCache()
         ai_key = secret_manager_cache.get_secret("AIKey")
-        if ai_key is None:
-            logger.error("Error: AIKey could not be retrieved.")
-            return None
         pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
-        if pine_cone_key is None:
-            logger.error("Error: AIKey could not be retrieved.")
-            return None
 
         model_name = "text-embedding-3-small"
         embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=ai_key)
@@ -64,20 +58,23 @@ def handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": f"Missing data: {str(e)}"})
         }
+    except ClientError as e:
+        logger.error(f"Missing key in JSON data: {str(e)}")
+        return {
+            "statusCode": 400,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": f"Missing data: {str(e)}"})
+        }
 
 
 def get_memories(record_ids: list):
     keys = [{'id': {'S': str(id_)}} for id_ in record_ids]
     request_items = {"memory": {'Keys': keys}}
     try:
-        # Batch get items from DynamoDB
         response = dynamodb.batch_get_item(RequestItems=request_items)
-
-        # Extract the retrieved items
         items = response.get('Responses', {}).get("memory", [])
         logger.info(items)
         return items
-
     except Exception as e:
         logger.error(str(e))
         return None

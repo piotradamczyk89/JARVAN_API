@@ -113,16 +113,15 @@ class SecretManagerCache:
             self._cache[name] = secret
             return secret
         except ClientError as e:
-            if e.response['Error']['Code'] == 'DecryptionFailureException':
-                logger.error("Secrets Manager can't decrypt the protected secret text using the provided KMS key.")
-            elif e.response['Error']['Code'] == 'InternalServiceErrorException':
-                logger.error("An error occurred on the server side.")
-            elif e.response['Error']['Code'] == 'InvalidParameterException':
-                logger.error("You provided an invalid value for a parameter.")
-            elif e.response['Error']['Code'] == 'InvalidRequestException':
-                logger.error("You provided a parameter value that is not valid for the current state of the resource.")
-            elif e.response['Error']['Code'] == 'ResourceNotFoundException':
-                logger.error("We can't find the resource that you asked for.")
-            else:
-                logger.error("An unknown error occurred:", e)
-            return None
+            error_code = e.response['Error']['Code']
+            error_messages = {
+                'DecryptionFailureException': "Secrets Manager can't decrypt the protected secret text using the provided KMS key.",
+                'InternalServiceErrorException': "An error occurred on the server side.",
+                'InvalidParameterException': "You provided an invalid value for a parameter.",
+                'InvalidRequestException': "You provided a parameter value that is not valid for the current state of the resource.",
+                'ResourceNotFoundException': "We can't find the resource that you asked for."
+            }
+
+            error_message = error_messages.get(error_code, f"An unknown error occurred: {e}")
+            logger.error(error_message)
+            raise e
