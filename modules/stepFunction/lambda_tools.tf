@@ -25,7 +25,7 @@ resource "aws_lambda_function" "lambda" {
   runtime          = each.value.runtime
   timeout          = 60
   architectures = ["x86_64"]
-
+  memory_size = 256
   layers = [for layer in var.lambda_layers : layer.arn if contains(each.value.desired_layers,layer.layer_name )]
 
   environment {

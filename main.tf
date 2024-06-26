@@ -96,7 +96,5 @@ module "api" {
       environment    = ["SQS_URL", "MY_AWS_REGION"]
     },
   }
-
-
 }
 

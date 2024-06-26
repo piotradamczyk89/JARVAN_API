@@ -86,7 +86,7 @@ def handler(event, context):
             question = body['text']
             logger.info(question)
             chat = ChatOpenAI(temperature=0, openai_api_key=ai_key).bind(
-                functions=[save_memory_schema, answer_memory_schema, answer_internet_schema])
+                functions=[save_memory_schema, answer_memory_schema])
             answer = chat.invoke([HumanMessage(question)])
             data = answer.additional_kwargs.get('function_call')
             data['arguments'] = json.loads(data['arguments'])
