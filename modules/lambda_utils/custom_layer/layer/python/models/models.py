@@ -78,7 +78,7 @@ class ParameterStoreCache:
         response = self.ssm.get_parameter(Name=name, WithDecryption=with_decryption)
         parameter_value = response['Parameter']['Value']
         if parameter_value is None:
-            raise MissingSecretException("No parameter was load form parameter store")
+            raise MissingSecretException("No parameter was load from parameter store")
         self._cache[name] = parameter_value
         return parameter_value
 
