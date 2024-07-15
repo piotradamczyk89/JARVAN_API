@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 import boto3
@@ -15,11 +16,13 @@ def handler(event, context):
     secret_manager_cache = SecretManagerCache()
     ai_key = secret_manager_cache.get_secret("AIKey")
     pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
+    logger.info(event)
+    arguments = json.loads(event['arguments'])
 
-    vector_emb = get_embeddings(event['arguments']['memory'], ai_key)
+    vector_emb = get_embeddings(arguments['memory'], ai_key)
     id_ = str(uuid.uuid4())
     metadata = event["metadata"].copy()
-    metadata.update({"memory": event['arguments']['memory']})
+    metadata.update({"memory": arguments['memory']})
     vector = {
         "id": id_,
         "values": vector_emb,

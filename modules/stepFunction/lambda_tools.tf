@@ -15,6 +15,9 @@ data "archive_file" "lambda" {
   output_path = "${path.module}/src/${each.key}.zip"
 }
 
+
+#TODO definition of memory size should be moved to main
+
 resource "aws_lambda_function" "lambda" {
   for_each         = var.lambda_functions
   filename         = "${path.module}/src/${each.key}.zip"

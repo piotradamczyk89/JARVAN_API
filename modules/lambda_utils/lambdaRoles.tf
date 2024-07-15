@@ -89,9 +89,6 @@ data "aws_iam_policy_document" "get_dynamodb_record_doc" {
 }
 
 
-
-
-
 resource "aws_iam_policy" "logs_policy" {
   policy = data.aws_iam_policy_document.logs_policy_doc.json
 }
@@ -116,9 +113,6 @@ resource "aws_iam_policy" "get_parameter_store_policy" {
 resource "aws_iam_policy" "get_dynamodb_record_policy" {
   policy = data.aws_iam_policy_document.get_dynamodb_record_doc.json
 }
-
-
-
 
 
 resource "aws_iam_role" "slack_lambda" {
@@ -165,6 +159,15 @@ resource "aws_iam_role" "answer_memory_lambda" {
     aws_iam_policy.secretmanager_policy.arn,
     aws_iam_policy.kms_decrypt_policy.arn,
     aws_iam_policy.get_dynamodb_record_policy.arn
+  ]
+}
+
+resource "aws_iam_role" "no_intention_defined_lambda" {
+  name                = "no_intention_defined_lambda"
+  assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
+  managed_policy_arns = [
+    aws_iam_policy.logs_policy.arn,
+    aws_iam_policy.get_parameter_store_policy.arn,
   ]
 }
 

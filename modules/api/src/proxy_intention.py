@@ -3,9 +3,14 @@ import logging
 import os
 
 import boto3
+from botocore.exceptions import ClientError
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
+
+from custom_methods import slack_bot_response
 from models import SecretManagerCache
+from models import MissingSecretException
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -71,49 +76,62 @@ answer_internet_schema = {
         ]
     }
 }
+secret_manager_cache = SecretManagerCache()
+error_message = "coś poszło nie tak"
 
 
 def handler(event, context):
-    secret_manager_cache = SecretManagerCache()
-    ai_key = secret_manager_cache.get_secret("AIKey")
-    if ai_key is None:
-        logger.error("Error: AIKey could not be retrieved.")
-        return None
     try:
-        logger.info(event)
-        for record in event['Records']:
-            body = json.loads(record['body'])
-            question = body['text']
-            logger.info(question)
-            chat = ChatOpenAI(temperature=0, openai_api_key=ai_key).bind(
-                functions=[save_memory_schema, answer_memory_schema])
-            answer = chat.invoke([HumanMessage(question)])
-            data = answer.additional_kwargs.get('function_call')
-            data['arguments'] = json.loads(data['arguments'])
+        ai_key = secret_manager_cache.get_secret("AIKey")
+        logger.info("event is " + str(event))
+        for record in event.get('Records', []):
+            body = json.loads(record.get('body', '{}'))
+            question = body.get('text')
+            if not question:
+                logger.error("No question found in the message body.")
+                continue
+            logger.info("question is " + question)
+            data = define_intention(key=ai_key, question=question)
+            del body['text']
             data.update({"metadata": body})
-            logger.info(data)
-            step_function_arn = os.getenv('STEP_FUNCTION_ARN', '')
-            client = boto3.client('stepfunctions')
-            try:
-                response = client.start_execution(stateMachineArn=step_function_arn, input=json.dumps(data))
-                return {
-                    'statusCode': 200,
-                    'body': json.dumps({
-                        'message': 'Step Function started successfully',
-                        'executionArn': response['executionArn']
-                    })
-                }
-            except Exception as e:
-                return {
-                    'statusCode': 500,
-                    'body': json.dumps({
-                        'message': 'Error starting Step Function',
-                        'error': str(e)
-                    })
-                }
+            send_message_to_sqs(data)
+    except MissingSecretException as e:
+        logger.error(f"Missing Secret Exception: {str(e)}")
+        slack_bot_response(error_message)
     except KeyError as e:
         logger.error(f"Missing key in JSON data: {str(e)}")
-        raise
+        slack_bot_response(error_message)
     except Exception as er:
         logger.error(f"Exception: {str(er)}")
-        raise
+        slack_bot_response(error_message)
+
+
+def make_open_ai_call(key, question, model="gpt-3.5-turbo"):
+    chat = ChatOpenAI(temperature=0, openai_api_key=key, model=model).bind(
+        functions=[save_memory_schema, answer_memory_schema])
+    answer = chat.invoke([HumanMessage(question)])
+    return answer.additional_kwargs.get('function_call')
+
+
+def define_intention(key, question):
+    data = make_open_ai_call(key=key, question=question)
+    if data is None:
+        data = make_open_ai_call(key=key, question=question, model="gpt-4o")
+    if data is None:
+        data = {"name": "dontKnowHowToRespondToThat"}
+    return data
+
+
+def send_message_to_sqs(data):
+    logger.info("data moved to step function is " + str(data))
+    step_function_arn = os.getenv('STEP_FUNCTION_ARN', '')
+    client = boto3.client('stepfunctions')
+    try:
+        response = client.start_execution(stateMachineArn=step_function_arn, input=json.dumps(data))
+        logger.info(json.dumps({
+            'message': 'Step Function started successfully',
+            'executionArn': response['executionArn']
+        }))
+    except ClientError as e:
+        logger.error(f"Error starting Step Function: {str(e)}")
+        slack_bot_response(error_message)

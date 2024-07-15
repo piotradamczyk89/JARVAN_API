@@ -16,9 +16,12 @@ def handler(event, context):
     request_body = json.loads(event['body'])
     try:
         slack_message = SlackMessage(request_body)
-    except ValueError as e:
+    except KeyError as e:
         logger.error(f"Error initializing SlackMessage: {e}")
-        raise
+        return {
+            'statusCode': 500,
+            'body': f"Error initializing SlackMessage: {e}"
+        }
     if verify(event) and slack_message is not None:
         if slack_message.type == "url_verification":
             return {
@@ -54,7 +57,7 @@ def verify(event):
         timestamp = request_headers['X-Slack-Request-Timestamp']
         slack_signature = request_headers['X-Slack-Signature']
     except KeyError as er:
-        logger.error(f"Missing expected key: {er}")
+        logger.error(f"Missing expected key when verifying slack message: {er}")
         return False
 
     secret_manager_cache = SecretManagerCache()
