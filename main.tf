@@ -68,6 +68,13 @@ module "step_function" {
       desired_layers = []
       role           = module.lambda_utils.slack_lambda_role
       environment    = []
+    },
+    no_intention_defined= {
+      runtime        = "python3.12"
+      extension      = "py"
+      desired_layers = ["custom_layer"]
+      role           = module.lambda_utils.no_intention_defined_lambda
+      environment    = []
     }
   }
 

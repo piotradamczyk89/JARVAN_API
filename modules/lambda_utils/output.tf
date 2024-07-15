@@ -16,3 +16,6 @@ output "memory_lambda_role" {
 output "answer_memory_lambda_role" {
   value = aws_iam_role.answer_memory_lambda.arn
 }
+output "no_intention_defined_lambda" {
+  value = aws_iam_role.no_intention_defined_lambda.arn
+}

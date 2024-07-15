@@ -1,3 +1,4 @@
+import json
 
 import boto3
 from langchain_core.prompts import ChatPromptTemplate
@@ -30,18 +31,18 @@ def handler(event, context):
     secret_manager_cache = SecretManagerCache()
     ai_key = secret_manager_cache.get_secret("AIKey")
     pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
-
-    vector_emb = get_embeddings(event['arguments']['question'], ai_key)
+    arguments = json.loads(event['arguments'])
+    vector_emb = get_embeddings(arguments['question'], ai_key)
     index = get_vector_base_index(pine_cone_key)
 
     response = index.query(vector=vector_emb, top_k=3, include_values=False)
     record_ids = [vector["id"] for vector in response["matches"]]
-    context_string = "\n".join([item['metadata']['M']['text']['S'] for item in get_memories(record_ids)])
+    context_string = "\n".join([item['metadata']['M']['memory']['S'] for item in get_memories(record_ids)])
     logger.info(context_string)
     chat = ChatOpenAI(temperature=0.3, openai_api_key=ai_key)
     answer = chat.invoke(
         ChatPromptTemplate.from_messages([("system", system_message), ("human", human_message)]).format_prompt(
-            context=context_string, question=event['arguments']['question']))
+            context=context_string, question=arguments['question']))
     slack_bot_response(answer.content)
 
 
