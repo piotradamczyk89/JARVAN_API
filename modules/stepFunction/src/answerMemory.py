@@ -48,6 +48,7 @@ def handler(event, context):
         index = get_vector_base_index(pine_cone_key)
         response = index.query(vector=vector_emb, top_k=3, include_values=False)
         record_ids = [vector["id"] for vector in response["matches"]]
+
         context_string = "\n".join([item['metadata']['M']['memory']['S'] for item in get_memories(record_ids)])
         logger.info(context_string)
         chat = ChatOpenAI(temperature=0.3, openai_api_key=ai_key)
