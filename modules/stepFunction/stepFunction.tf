@@ -51,7 +51,6 @@ resource "aws_cloudwatch_log_group" "step_function_log_group" {
   retention_in_days = 7
 }
 
-//TODO create .tftpl file to move stepfunction definition to the template file follow: https://awstip.com/invoke-your-step-function-with-api-gateway-8a9c060026ce
 resource "aws_sfn_state_machine" "stepFunction" {
   name     = "stepFunction"
   role_arn = aws_iam_role.stepFunctionRole.arn
@@ -107,6 +106,25 @@ resource "aws_sfn_state_machine" "stepFunction" {
           "IntervalSeconds": 1,
           "MaxAttempts": 3,
           "BackoffRate": 2
+        },
+        {
+          "ErrorEquals": [ "OpenAIError" ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        },
+        {
+          "ErrorEquals": [ "BotoCoreError", "MissingSecretException" ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.errorInfo",
+          "Next": "dontKnow"
         }
       ],
       "End": true
@@ -125,6 +143,25 @@ resource "aws_sfn_state_machine" "stepFunction" {
           "IntervalSeconds": 1,
           "MaxAttempts": 3,
           "BackoffRate": 2
+        },
+        {
+          "ErrorEquals": [ "OpenAIError" ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        },
+        {
+          "ErrorEquals": [ "BotoCoreError", "MissingSecretException" ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.errorInfo",
+          "Next": "dontKnow"
         }
       ],
       "End": true
@@ -132,19 +169,6 @@ resource "aws_sfn_state_machine" "stepFunction" {
     "dontKnow": {
       "Type": "Task",
       "Resource": "${aws_lambda_function.lambda["no_intention_defined"].arn}",
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException",
-            "Lambda.TooManyRequestsException"
-          ],
-          "IntervalSeconds": 1,
-          "MaxAttempts": 3,
-          "BackoffRate": 2
-        }
-      ],
       "End": true
     },
     "answerInternet": {
