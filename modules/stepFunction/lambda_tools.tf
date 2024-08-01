@@ -2,7 +2,8 @@
 locals {
   layers = toset(flatten(concat([for el in var.lambda_functions : el.desired_layers])))
   environments = {
-    "MY_AWS_REGION" = var.myRegion
+    "MY_AWS_REGION" = var.myRegion,
+    "WORKSPACE" = terraform.workspace
   }
 }
 
@@ -21,7 +22,7 @@ data "archive_file" "lambda" {
 resource "aws_lambda_function" "lambda" {
   for_each         = var.lambda_functions
   filename         = "${path.module}/src/${each.key}.zip"
-  function_name    = each.key
+  function_name    = "${terraform.workspace}-${each.key}"
   role             = each.value.role
   handler          = "${each.key}.handler"
   source_code_hash = data.archive_file.lambda[each.key].output_base64sha256

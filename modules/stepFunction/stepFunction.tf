@@ -1,5 +1,5 @@
 resource "aws_iam_role" "stepFunctionRole" {
-  name = "sfn-role"
+  name = "${terraform.workspace}-sfn-role"
 
   assume_role_policy = jsonencode({
     Version   = "2012-10-17"
@@ -16,7 +16,7 @@ resource "aws_iam_role" "stepFunctionRole" {
 }
 
 resource "aws_iam_role_policy" "lambda_invoke_policy" {
-  name = "LambdaInvokePolicy"
+  name = "${terraform.workspace}-LambdaInvokePolicy"
   role = aws_iam_role.stepFunctionRole.id
 
   policy = jsonencode({
@@ -47,12 +47,12 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
 
 
 resource "aws_cloudwatch_log_group" "step_function_log_group" {
-  name              = "step-functions-log-group"
+  name              = "${terraform.workspace}-step-functions-log-group"
   retention_in_days = 7
 }
 
 resource "aws_sfn_state_machine" "stepFunction" {
-  name     = "stepFunction"
+  name     = "${terraform.workspace}-stepFunction"
   role_arn = aws_iam_role.stepFunctionRole.arn
   type     = "STANDARD"
   logging_configuration {

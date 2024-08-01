@@ -1,15 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "5.46.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.myRegion
-}
 
 module "table" {
   source = "./modules/table"
@@ -53,14 +41,14 @@ module "step_function" {
       extension      = "py"
       desired_layers = ["custom_layer","langchain_layer","pinecone_layer"]
       role           = module.lambda_utils.memory_lambda_role
-      environment    = ["MY_AWS_REGION"]
+      environment    = ["MY_AWS_REGION","WORKSPACE"]
     },
     answerMemory = {
       runtime        = "python3.12"
       extension      = "py"
       desired_layers = ["custom_layer","langchain_layer","pinecone_layer"]
       role           = module.lambda_utils.answer_memory_lambda_role
-      environment    = ["MY_AWS_REGION"]
+      environment    = ["MY_AWS_REGION","WORKSPACE"]
     },
     answerInternet = {
       runtime        = "python3.12"
@@ -74,7 +62,7 @@ module "step_function" {
       extension      = "py"
       desired_layers = ["custom_layer"]
       role           = module.lambda_utils.no_intention_defined_lambda
-      environment    = []
+      environment    = ["WORKSPACE"]
     }
   }
 
@@ -100,7 +88,7 @@ module "api" {
       extension      = "py"
       desired_layers = ["custom_layer"]
       role           = module.lambda_utils.slack_lambda_role
-      environment    = ["SQS_URL", "MY_AWS_REGION"]
+      environment    = ["SQS_URL", "MY_AWS_REGION","WORKSPACE"]
     },
   }
 }
