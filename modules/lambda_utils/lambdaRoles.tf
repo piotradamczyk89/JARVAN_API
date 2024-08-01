@@ -116,18 +116,18 @@ resource "aws_iam_policy" "get_dynamodb_record_policy" {
 
 
 resource "aws_iam_role" "slack_lambda" {
-  name                = "slack_lambda"
+  name                = "${terraform.workspace}-slack_lambda"
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
     var.conversation_table_access,
     aws_iam_policy.logs_policy.arn,
-    aws_iam_policy.secretmanager_policy.arn,
+    aws_iam_policy.get_parameter_store_policy.arn,
     aws_iam_policy.send_message_policy.arn,
     aws_iam_policy.kms_decrypt_policy.arn
   ]
 }
 resource "aws_iam_role" "proxy_intention_lambda" {
-  name                = "proxy_intention_lambda"
+  name                = "${terraform.workspace}-proxy_intention_lambda"
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
     aws_iam_policy.logs_policy.arn,
@@ -139,7 +139,7 @@ resource "aws_iam_role" "proxy_intention_lambda" {
 }
 
 resource "aws_iam_role" "memory_lambda" {
-  name                = "memory_lambda"
+  name                = "${terraform.workspace}-memory_lambda"
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
     aws_iam_policy.logs_policy.arn,
@@ -151,7 +151,7 @@ resource "aws_iam_role" "memory_lambda" {
 }
 
 resource "aws_iam_role" "answer_memory_lambda" {
-  name                = "answer_memory_lambda"
+  name                = "${terraform.workspace}-answer_memory_lambda"
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
     aws_iam_policy.logs_policy.arn,
@@ -163,7 +163,7 @@ resource "aws_iam_role" "answer_memory_lambda" {
 }
 
 resource "aws_iam_role" "no_intention_defined_lambda" {
-  name                = "no_intention_defined_lambda"
+  name                = "${terraform.workspace}-no_intention_defined_lambda"
   assume_role_policy  = data.aws_iam_policy_document.lambda_role.json
   managed_policy_arns = [
     aws_iam_policy.logs_policy.arn,

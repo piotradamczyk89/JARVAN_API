@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import uuid
 import boto3
 from botocore.exceptions import BotoCoreError
@@ -12,12 +13,13 @@ from open_ai_utils import get_embeddings
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+secret_manager_cache = SecretManagerCache()
+WORKSPACE = os.getenv('WORKSPACE', '')
 
 
 def handler(event, context):
     try:
         try:
-            secret_manager_cache = SecretManagerCache()
             ai_key = secret_manager_cache.get_secret("AIKey")
             pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
         except (BotoCoreError, MissingSecretException) as e:
@@ -39,7 +41,7 @@ def handler(event, context):
             "metadata": metadata
         }
 
-        index = get_vector_base_index(pine_cone_key)
+        index = get_vector_base_index(pine_cone_key,WORKSPACE)
         index.upsert([vector])
         del vector["values"]
         create_memory(vector)
@@ -50,4 +52,4 @@ def handler(event, context):
 
 
 def create_memory(memory):
-    boto3.resource('dynamodb').Table('memory').put_item(Item=memory)
+    boto3.resource('dynamodb').Table(WORKSPACE + '-memory').put_item(Item=memory)

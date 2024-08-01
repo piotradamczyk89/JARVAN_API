@@ -24,4 +24,3 @@ variable "lambda_layers" {
 variable "step_function_arn" {
   type        = string
 }
-

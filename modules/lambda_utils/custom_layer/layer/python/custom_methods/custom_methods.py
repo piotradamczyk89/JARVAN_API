@@ -1,20 +1,23 @@
 import json
+import os
+
 import requests
 import logging
 from models import ParameterStoreCache
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+WORKSPACE = os.getenv('WORKSPACE', '')
+parameter_store_cache = ParameterStoreCache()
 
 
 def slack_bot_response(message):
-    parameter_store_cache = ParameterStoreCache()
-    slack_token = parameter_store_cache.get_parameter("slack_bot_oAuth_token")
+    slack_token = parameter_store_cache.get_parameter(WORKSPACE + "-slack_bot_oAuth_token")
     if not slack_token:
         logger.error("Error: Slack token could not be retrieved.")
         return None
     data = {
-        "channel": "life",
+        "channel": WORKSPACE + "_life",
         "text": message
     }
     json_data = json.dumps(data, ensure_ascii=False)
@@ -30,4 +33,3 @@ def slack_bot_response(message):
     except requests.exceptions.RequestException as e:
         logger.error(f"HTTP Request failed: {e}")
         return None
-

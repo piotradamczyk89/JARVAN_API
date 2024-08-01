@@ -3,8 +3,8 @@ import time
 from pinecone import Pinecone, ServerlessSpec
 
 
-def get_vector_base_index(pine_cone_key):
-    index_name = "brain"
+def get_vector_base_index(pine_cone_key, index_prefix):
+    index_name = index_prefix + "-brain"
     pc = Pinecone(api_key=pine_cone_key)
     if index_name not in pc.list_indexes().names():
         pc.create_index(

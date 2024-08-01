@@ -5,6 +5,7 @@ locals {
     "MY_AWS_REGION" = var.myRegion
     "SQS_URL" = aws_sqs_queue.queue.url
     "STEP_FUNCTION_ARN" = var.step_function_arn
+    "WORKSPACE" = terraform.workspace
   }
 }
 // lambda
@@ -19,7 +20,7 @@ data "archive_file" "lambda" {
 resource "aws_lambda_function" "lambda" {
   for_each         = var.lambda_functions
   filename         = "${path.module}/src/${each.key}.zip"
-  function_name    = each.key
+  function_name    = "${terraform.workspace}-${each.key}"
   role             = each.value.role
   handler          = "${each.key}.handler"
   source_code_hash = data.archive_file.lambda[each.key].output_base64sha256

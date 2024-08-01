@@ -1,4 +1,6 @@
 import json
+import os
+
 from openai import OpenAIError
 import boto3
 from botocore.exceptions import BotoCoreError
@@ -26,12 +28,13 @@ CONTEXT $$$
 human_message = "{question}"
 
 dynamodb = boto3.client('dynamodb')
+secret_manager_cache = SecretManagerCache()
+WORKSPACE = os.getenv('WORKSPACE', '')
 
 
 def handler(event, context):
     try:
         try:
-            secret_manager_cache = SecretManagerCache()
             ai_key = secret_manager_cache.get_secret("AIKey")
             pine_cone_key = secret_manager_cache.get_secret("PineConeApiKey")
         except (BotoCoreError, MissingSecretException) as e:
@@ -45,7 +48,7 @@ def handler(event, context):
             logger.error(f"OpenAIError during embedding {e}")
             raise e
 
-        index = get_vector_base_index(pine_cone_key)
+        index = get_vector_base_index(pine_cone_key, WORKSPACE)
         response = index.query(vector=vector_emb, top_k=3, include_values=False)
         record_ids = [vector["id"] for vector in response["matches"]]
 
@@ -66,9 +69,10 @@ def handler(event, context):
 
 
 def get_memories(record_ids: list):
+    table_name = WORKSPACE + "-memory"
     keys = [{'id': {'S': str(id_)}} for id_ in record_ids]
-    request_items = {"memory": {'Keys': keys}}
+    request_items = {table_name: {'Keys': keys}}
     response = dynamodb.batch_get_item(RequestItems=request_items)
-    items = response.get('Responses', {}).get("memory", [])
+    items = response.get('Responses', {}).get(table_name, [])
     logger.info(items)
     return items

@@ -1,5 +1,5 @@
 resource "aws_sqs_queue" "queue" {
-  name = "queue.fifo"
+  name = "${terraform.workspace}-queue.fifo"
   fifo_queue = true
   content_based_deduplication = true
   receive_wait_time_seconds = 10

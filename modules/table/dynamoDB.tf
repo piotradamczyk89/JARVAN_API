@@ -1,6 +1,6 @@
 resource "aws_dynamodb_table" "tables" {
   for_each       = var.tables
-  name           = each.key
+  name           = "${terraform.workspace}-${each.key}"
   read_capacity  = 1
   write_capacity = 1
   hash_key       = each.value.hash_key.name
@@ -31,7 +31,7 @@ data "aws_iam_policy_document" "dynamodb-access" {
 }
 
 resource "aws_iam_policy" "conversation_table_access" {
-  name   = "conversation_table_access"
+  name   = "${terraform.workspace}conversation_table_access"
   policy = data.aws_iam_policy_document.dynamodb-access.json
 }
 
